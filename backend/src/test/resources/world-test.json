@@ -9,7 +9,7 @@
         {"id": "test_object", "label": "Test Object", "objectType": "SCENERY", "puzzleId": null, "pickupItemId": null, "interactable": true},
         {"id": "floor_coin", "label": "Coin on Floor", "objectType": "ITEM", "puzzleId": null, "pickupItemId": "test_pickup_item", "interactable": true}
       ],
-      "puzzleIds": ["test_puzzle"]
+      "puzzleIds": ["test_puzzle", "test_combo_puzzle", "test_prereq_puzzle"]
     },
     {
       "id": "test_room_2",
@@ -42,6 +42,12 @@
       "name": "Shiny Coin",
       "description": "A shiny coin found on the floor.",
       "assetKey": "item_coin"
+    },
+    {
+      "id": "test_combo_reward",
+      "name": "Combo Reward",
+      "description": "Reward for solving the combination puzzle.",
+      "assetKey": "item_combo"
     }
   ],
   "puzzles": [
@@ -54,6 +60,27 @@
       "prerequisitePuzzleIds": [],
       "questionText": "Yes or no?",
       "expectedAnswer": "yes",
+      "caseSensitive": false
+    },
+    {
+      "type": "COMBINATION",
+      "id": "test_combo_puzzle",
+      "roomId": "test_room",
+      "description": "A test combination puzzle.",
+      "rewardItemId": "test_combo_reward",
+      "prerequisitePuzzleIds": [],
+      "expectedCode": "123",
+      "digitCount": 3
+    },
+    {
+      "type": "RIDDLE",
+      "id": "test_prereq_puzzle",
+      "roomId": "test_room",
+      "description": "A riddle that requires test_puzzle first.",
+      "rewardItemId": null,
+      "prerequisitePuzzleIds": ["test_puzzle"],
+      "questionText": "Maybe or maybe not?",
+      "expectedAnswer": "maybe",
       "caseSensitive": false
     }
   ]

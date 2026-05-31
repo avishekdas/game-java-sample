@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
@@ -32,6 +33,22 @@ public class GlobalExceptionHandler {
         log.warn("4xx INVALID_MOVE path={}", req.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(error(HttpStatus.CONFLICT, ex.getMessage(), req, ApiErrorCode.INVALID_MOVE));
+    }
+
+    @ExceptionHandler(PuzzleNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePuzzleNotFound(
+            PuzzleNotFoundException ex, HttpServletRequest req) {
+        log.warn("404 PUZZLE_NOT_FOUND path={}", req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(error(HttpStatus.NOT_FOUND, ex.getMessage(), req, ApiErrorCode.PUZZLE_NOT_FOUND));
+    }
+
+    @ExceptionHandler(PrerequisiteNotMetException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePrereqNotMet(
+            PrerequisiteNotMetException ex, HttpServletRequest req) {
+        log.warn("409 PREREQUISITE_NOT_MET path={}", req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(error(HttpStatus.CONFLICT, ex.getMessage(), req, ApiErrorCode.PREREQUISITE_NOT_MET));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

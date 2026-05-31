@@ -1,10 +1,12 @@
 package com.abhishri.escape.controller;
 
+import com.abhishri.escape.dto.AttemptPuzzleRequest;
 import com.abhishri.escape.dto.ExamineRequest;
 import com.abhishri.escape.dto.GameStateDTO;
 import com.abhishri.escape.dto.MoveRequest;
 import com.abhishri.escape.dto.PickupRequest;
 import com.abhishri.escape.service.GameSessionService;
+import com.abhishri.escape.service.PuzzleEvaluationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +24,12 @@ import java.util.UUID;
 public class GameController {
 
     private final GameSessionService gameSessionService;
+    private final PuzzleEvaluationService puzzleEvaluationService;
 
-    public GameController(GameSessionService gameSessionService) {
+    public GameController(GameSessionService gameSessionService,
+                          PuzzleEvaluationService puzzleEvaluationService) {
         this.gameSessionService = gameSessionService;
+        this.puzzleEvaluationService = puzzleEvaluationService;
     }
 
     @PostMapping("/new")
@@ -57,5 +62,12 @@ public class GameController {
             @PathVariable("gameId") UUID gameId,
             @Valid @RequestBody PickupRequest req) {
         return ResponseEntity.ok(gameSessionService.pickup(gameId, req));
+    }
+
+    @PostMapping("/{gameId}/attempt-puzzle")
+    public ResponseEntity<GameStateDTO> attemptPuzzle(
+            @PathVariable("gameId") UUID gameId,
+            @Valid @RequestBody AttemptPuzzleRequest req) {
+        return ResponseEntity.ok(puzzleEvaluationService.attempt(gameId, req));
     }
 }
