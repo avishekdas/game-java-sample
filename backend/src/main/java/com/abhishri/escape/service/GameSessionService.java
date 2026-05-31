@@ -10,6 +10,7 @@ import com.abhishri.escape.dto.GameStateDTO;
 import com.abhishri.escape.dto.InventoryItemDTO;
 import com.abhishri.escape.dto.LastActionResult;
 import com.abhishri.escape.dto.MoveRequest;
+import com.abhishri.escape.dto.PickupRequest;
 import com.abhishri.escape.dto.RoomDTO;
 import com.abhishri.escape.dto.RoomObjectDTO;
 import com.abhishri.escape.exception.GameNotFoundException;
@@ -106,6 +107,34 @@ public class GameSessionService {
                 .orElseThrow(() -> new InvalidMoveException("Object not found in this room: " + req.getObjectId()));
 
         return buildStateDTO(session, obj.getLabel(), LastActionResult.EXAMINE_OK);
+    }
+
+    @Transactional
+    public GameStateDTO pickup(UUID gameId, PickupRequest req) {
+        GameSession session = gameSessionRepository.findById(gameId)
+                .orElseThrow(() -> new GameNotFoundException(gameId));
+        Room currentRoom = roomRepository.findById(session.getCurrentRoomId())
+                .orElseThrow(() -> new IllegalStateException("Room not found: " + session.getCurrentRoomId()));
+
+        RoomObject obj = currentRoom.getObjects().stream()
+                .filter(o -> o.getId().equals(req.getObjectId()))
+                .findFirst()
+                .orElseThrow(() -> new InvalidMoveException("Object not found in this room: " + req.getObjectId()));
+
+        if (obj.getPickupItemId() == null) {
+            throw new InvalidMoveException("Cannot pick that up: " + req.getObjectId());
+        }
+
+        if (inventoryService.hasItem(session, obj.getPickupItemId())) {
+            throw new InvalidMoveException("Already holding: " + obj.getPickupItemId());
+        }
+
+        inventoryService.addItem(session, obj.getPickupItemId());
+        session.setLastUpdatedAt(LocalDateTime.now());
+        gameSessionRepository.save(session);
+        log.info("Pickup game={} item={}", gameId, obj.getPickupItemId());
+
+        return buildStateDTO(session, "You pick up " + obj.getLabel() + ".", LastActionResult.PICKUP_OK);
     }
 
     @Transactional(readOnly = true)

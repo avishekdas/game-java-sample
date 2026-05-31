@@ -3,6 +3,7 @@ package com.abhishri.escape.controller;
 import com.abhishri.escape.dto.ExamineRequest;
 import com.abhishri.escape.dto.GameStateDTO;
 import com.abhishri.escape.dto.MoveRequest;
+import com.abhishri.escape.dto.PickupRequest;
 import com.abhishri.escape.service.GameSessionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -49,5 +50,12 @@ public class GameController {
             @PathVariable("gameId") UUID gameId,
             @Valid @RequestBody ExamineRequest req) {
         return ResponseEntity.ok(gameSessionService.examine(gameId, req));
+    }
+
+    @PostMapping("/{gameId}/pickup")
+    public ResponseEntity<GameStateDTO> pickup(
+            @PathVariable("gameId") UUID gameId,
+            @Valid @RequestBody PickupRequest req) {
+        return ResponseEntity.ok(gameSessionService.pickup(gameId, req));
     }
 }

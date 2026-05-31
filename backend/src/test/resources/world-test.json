@@ -6,7 +6,8 @@
       "description": "A minimal test room.",
       "connectedRoomIds": ["test_room_2"],
       "objects": [
-        {"id": "test_object", "label": "Test Object", "objectType": "SCENERY", "puzzleId": null, "pickupItemId": null, "interactable": true}
+        {"id": "test_object", "label": "Test Object", "objectType": "SCENERY", "puzzleId": null, "pickupItemId": null, "interactable": true},
+        {"id": "floor_coin", "label": "Coin on Floor", "objectType": "ITEM", "puzzleId": null, "pickupItemId": "test_pickup_item", "interactable": true}
       ],
       "puzzleIds": ["test_puzzle"]
     },
@@ -35,6 +36,12 @@
       "name": "Test Item",
       "description": "A test item.",
       "assetKey": "item_test"
+    },
+    {
+      "id": "test_pickup_item",
+      "name": "Shiny Coin",
+      "description": "A shiny coin found on the floor.",
+      "assetKey": "item_coin"
     }
   ],
   "puzzles": [

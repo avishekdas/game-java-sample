@@ -34,6 +34,14 @@ public class InventoryService {
         return session.getInventory() != null && session.getInventory().contains(itemId);
     }
 
+    public void removeItem(GameSession session, String itemId) {
+        PlayerInventory inv = session.getInventory();
+        if (inv.contains(itemId)) {
+            inv.getHeldItemIds().remove(itemId);
+            playerInventoryRepository.save(inv);
+        }
+    }
+
     public List<InventoryItemDTO> snapshot(GameSession session) {
         if (session.getInventory() == null
                 || session.getInventory().getHeldItemIds().isEmpty()) {
