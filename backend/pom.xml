@@ -75,8 +75,6 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring.boot.version}</version>
                 <configuration>
-                    <!-- M0: skip repackage until EscapeRoomApplication exists (M1) -->
-                    <skip>true</skip>
                     <mainClass>com.abhishri.escape.EscapeRoomApplication</mainClass>
                 </configuration>
                 <executions>
