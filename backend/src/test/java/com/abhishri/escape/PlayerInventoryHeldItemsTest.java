@@ -8,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,6 +24,7 @@ class PlayerInventoryHeldItemsTest {
     @Test
     void roundTrip_preservesHeldItems() {
         PlayerInventory inv = new PlayerInventory();
+        inv.setId(UUID.randomUUID());
         inv.setHeldItemIds(List.of("desk_key", "brass_magnifying_glass"));
 
         em.persistAndFlush(inv);

@@ -5,7 +5,7 @@
       "name": "Test Room",
       "description": "A test room.",
       "connectedRoomIds": [],
-      "objectIds": [],
+      "objects": [],
       "puzzleIds": ["puzzle_bad"]
     }
   ],

@@ -7,6 +7,6 @@ public class RoomSeed {
     public String name;
     public String description;
     public List<String> connectedRoomIds;
-    public List<String> objectIds;
+    public List<RoomObjectSeed> objects;
     public List<String> puzzleIds;
 }

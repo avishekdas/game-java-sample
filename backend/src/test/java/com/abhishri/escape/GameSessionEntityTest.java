@@ -10,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,8 +26,10 @@ class GameSessionEntityTest {
     @Test
     void roundTrip_persistsAllFields() {
         PlayerInventory inv = new PlayerInventory();
+        inv.setId(UUID.randomUUID());
 
         GameSession session = new GameSession();
+        session.setId(UUID.randomUUID());
         session.setCurrentRoomId("room_foyer");
         session.setStatus(GameStatus.IN_PROGRESS);
         session.setCreatedAt(LocalDateTime.now());
@@ -47,12 +50,7 @@ class GameSessionEntityTest {
     @Test
     void isComplete_returnsTrueWhenComplete() {
         GameSession session = new GameSession();
-        session.setCurrentRoomId("room_foyer");
         session.setStatus(GameStatus.COMPLETE);
-        session.setCreatedAt(LocalDateTime.now());
-        session.setLastUpdatedAt(LocalDateTime.now());
-        session.setInventory(new PlayerInventory());
-
         assertThat(session.isComplete()).isTrue();
     }
 

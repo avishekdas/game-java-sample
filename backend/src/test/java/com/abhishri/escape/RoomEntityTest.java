@@ -1,6 +1,8 @@
 package com.abhishri.escape;
 
+import com.abhishri.escape.domain.ObjectType;
 import com.abhishri.escape.domain.Room;
+import com.abhishri.escape.domain.RoomObject;
 import com.abhishri.escape.repository.RoomRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,12 +24,26 @@ class RoomEntityTest {
 
     @Test
     void roundTrip_persistsAllCollections() {
+        RoomObject clock = new RoomObject();
+        clock.setId("wall_clock");
+        clock.setLabel("Wall Clock");
+        clock.setObjectType(ObjectType.PUZZLE);
+        clock.setPuzzleId("puzzle_clock");
+        clock.setInteractable(true);
+
+        RoomObject desk = new RoomObject();
+        desk.setId("reception_desk");
+        desk.setLabel("Reception Desk");
+        desk.setObjectType(ObjectType.ITEM);
+        desk.setPickupItemId("desk_key");
+        desk.setInteractable(true);
+
         Room room = new Room();
         room.setId("room_foyer");
         room.setName("The Entry Foyer");
         room.setDescription("Cold marble floor.");
         room.setConnectedRoomIds(List.of("room_reading_hall"));
-        room.setObjectIds(List.of("wall_clock", "reception_desk"));
+        room.setObjects(List.of(clock, desk));
         room.setPuzzleIds(List.of("puzzle_clock"));
 
         em.persistAndFlush(room);
@@ -36,8 +52,15 @@ class RoomEntityTest {
         Room loaded = roomRepository.findById("room_foyer").orElseThrow();
         assertThat(loaded.getName()).isEqualTo("The Entry Foyer");
         assertThat(loaded.getConnectedRoomIds()).containsExactlyInAnyOrder("room_reading_hall");
-        assertThat(loaded.getObjectIds()).containsExactlyInAnyOrder("wall_clock", "reception_desk");
         assertThat(loaded.getPuzzleIds()).containsExactlyInAnyOrder("puzzle_clock");
+        assertThat(loaded.getObjects()).hasSize(2);
+        assertThat(loaded.getObjectIds()).containsExactlyInAnyOrder("wall_clock", "reception_desk");
+
+        RoomObject loadedClock = loaded.getObjects().stream()
+                .filter(o -> "wall_clock".equals(o.getId())).findFirst().orElseThrow();
+        assertThat(loadedClock.getLabel()).isEqualTo("Wall Clock");
+        assertThat(loadedClock.getObjectType()).isEqualTo(ObjectType.PUZZLE);
+        assertThat(loadedClock.getPuzzleId()).isEqualTo("puzzle_clock");
     }
 
     @Test
@@ -49,5 +72,19 @@ class RoomEntityTest {
 
         assertThat(room.isConnectedTo("room_other")).isTrue();
         assertThat(room.isConnectedTo("room_nope")).isFalse();
+    }
+
+    @Test
+    void containsObject_returnsTrueWhenObjectInRoom() {
+        RoomObject obj = new RoomObject();
+        obj.setId("cipher_wheel");
+
+        Room room = new Room();
+        room.setId("room_archives");
+        room.setName("The Archives");
+        room.setObjects(List.of(obj));
+
+        assertThat(room.containsObject("cipher_wheel")).isTrue();
+        assertThat(room.containsObject("nonexistent")).isFalse();
     }
 }

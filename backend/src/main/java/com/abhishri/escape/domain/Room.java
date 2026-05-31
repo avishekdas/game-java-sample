@@ -31,9 +31,8 @@ public class Room {
     private List<String> connectedRoomIds = new ArrayList<>();
 
     @ElementCollection
-    @CollectionTable(name = "ROOM_OBJECT_IDS", joinColumns = @JoinColumn(name = "ROOM_ID"))
-    @Column(name = "OBJECT_ID", length = 64)
-    private List<String> objectIds = new ArrayList<>();
+    @CollectionTable(name = "ROOM_OBJECTS", joinColumns = @JoinColumn(name = "ROOM_ID"))
+    private List<RoomObject> objects = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "ROOM_PUZZLE_IDS", joinColumns = @JoinColumn(name = "ROOM_ID"))
@@ -42,6 +41,15 @@ public class Room {
 
     public boolean isConnectedTo(String roomId) {
         return connectedRoomIds.contains(roomId);
+    }
+
+    /** Convenience — derives object IDs from the embedded objects list. */
+    public List<String> getObjectIds() {
+        return objects.stream().map(RoomObject::getId).toList();
+    }
+
+    public boolean containsObject(String objectId) {
+        return objects.stream().anyMatch(o -> o.getId().equals(objectId));
     }
 
     public String getId() { return id; }
@@ -56,8 +64,8 @@ public class Room {
     public List<String> getConnectedRoomIds() { return connectedRoomIds; }
     public void setConnectedRoomIds(List<String> connectedRoomIds) { this.connectedRoomIds = connectedRoomIds; }
 
-    public List<String> getObjectIds() { return objectIds; }
-    public void setObjectIds(List<String> objectIds) { this.objectIds = objectIds; }
+    public List<RoomObject> getObjects() { return objects; }
+    public void setObjects(List<RoomObject> objects) { this.objects = objects; }
 
     public List<String> getPuzzleIds() { return puzzleIds; }
     public void setPuzzleIds(List<String> puzzleIds) { this.puzzleIds = puzzleIds; }

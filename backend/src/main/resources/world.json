@@ -5,7 +5,13 @@
       "name": "The Entry Foyer",
       "description": "You wake on the cold marble of Thornwick Library's foyer. The front door is sealed by an electromagnetic lock. A wall clock above the reception desk is stopped at 11:47. A welcome mat curls at your feet; a battered umbrella stand leans against the wall. There are 3 brass nails set into the door frame.",
       "connectedRoomIds": ["room_reading_hall"],
-      "objectIds": ["wall_clock", "reception_desk", "welcome_mat", "umbrella_stand", "front_door"],
+      "objects": [
+        {"id": "wall_clock",      "label": "Wall Clock",      "objectType": "PUZZLE",  "puzzleId": "puzzle_clock",  "pickupItemId": null, "interactable": true},
+        {"id": "reception_desk",  "label": "Reception Desk",  "objectType": "ITEM",    "puzzleId": null,            "pickupItemId": "desk_key", "interactable": true},
+        {"id": "welcome_mat",     "label": "Welcome Mat",     "objectType": "SCENERY", "puzzleId": null,            "pickupItemId": null, "interactable": true},
+        {"id": "umbrella_stand",  "label": "Umbrella Stand",  "objectType": "SCENERY", "puzzleId": null,            "pickupItemId": null, "interactable": true},
+        {"id": "front_door",      "label": "Front Door",      "objectType": "SCENERY", "puzzleId": null,            "pickupItemId": null, "interactable": false}
+      ],
       "puzzleIds": ["puzzle_clock"]
     },
     {
@@ -13,7 +19,12 @@
       "name": "The Reading Hall",
       "description": "Eight tall bookshelves climb to a vaulted ceiling. A librarian's rolling cart sits half-shelved beside the 800-section. A glass display case glints in the lamplight, locked with a three-digit dial. A fireplace yawns cold against the north wall; the iron grate is loose.",
       "connectedRoomIds": ["room_foyer", "room_archives"],
-      "objectIds": ["display_case", "book_cart", "fireplace", "reading_lamp"],
+      "objects": [
+        {"id": "display_case",  "label": "Display Case", "objectType": "PUZZLE",  "puzzleId": "puzzle_display_case", "pickupItemId": null, "interactable": true},
+        {"id": "book_cart",     "label": "Book Cart",    "objectType": "PUZZLE",  "puzzleId": "puzzle_bookshelf",    "pickupItemId": null, "interactable": true},
+        {"id": "fireplace",     "label": "Fireplace",    "objectType": "SCENERY", "puzzleId": null,                  "pickupItemId": null, "interactable": true},
+        {"id": "reading_lamp",  "label": "Reading Lamp", "objectType": "SCENERY", "puzzleId": null,                  "pickupItemId": null, "interactable": true}
+      ],
       "puzzleIds": ["puzzle_display_case", "puzzle_bookshelf"]
     },
     {
@@ -21,7 +32,13 @@
       "name": "The Archives",
       "description": "Steel filing cabinets line the walls in 4 long rows. A brass cipher wheel is bolted to the south wall, its outer ring etched with letters. An iron chest sits dead-center, its lid stamped with a single keyhole. The pneumatic-tube terminal hisses softly in the corner, its tube empty and waiting. The manuscript pedestal stands bare.",
       "connectedRoomIds": ["room_reading_hall"],
-      "objectIds": ["cipher_wheel", "iron_chest", "pneumatic_tube_terminal", "manuscript_pedestal", "filing_cabinets"],
+      "objects": [
+        {"id": "cipher_wheel",             "label": "Cipher Wheel",              "objectType": "SCENERY", "puzzleId": null,                   "pickupItemId": null, "interactable": true},
+        {"id": "iron_chest",               "label": "Iron Chest",                "objectType": "PUZZLE",  "puzzleId": "puzzle_iron_chest",    "pickupItemId": null, "interactable": true},
+        {"id": "pneumatic_tube_terminal",  "label": "Pneumatic Tube Terminal",   "objectType": "SCENERY", "puzzleId": null,                   "pickupItemId": null, "interactable": true},
+        {"id": "manuscript_pedestal",      "label": "Manuscript Pedestal",       "objectType": "SCENERY", "puzzleId": null,                   "pickupItemId": null, "interactable": true},
+        {"id": "filing_cabinets",          "label": "Filing Cabinets",           "objectType": "SCENERY", "puzzleId": null,                   "pickupItemId": null, "interactable": true}
+      ],
       "puzzleIds": ["puzzle_cipher_wheel", "puzzle_iron_chest", "puzzle_terminal"]
     }
   ],

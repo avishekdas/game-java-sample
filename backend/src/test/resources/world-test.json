@@ -5,7 +5,9 @@
       "name": "Test Room",
       "description": "A minimal test room.",
       "connectedRoomIds": [],
-      "objectIds": ["test_object"],
+      "objects": [
+        {"id": "test_object", "label": "Test Object", "objectType": "SCENERY", "puzzleId": null, "pickupItemId": null, "interactable": true}
+      ],
       "puzzleIds": ["test_puzzle"]
     }
   ],

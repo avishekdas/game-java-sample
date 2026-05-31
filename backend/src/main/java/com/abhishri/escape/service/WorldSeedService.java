@@ -5,11 +5,17 @@ import com.abhishri.escape.config.seed.ItemSeed;
 import com.abhishri.escape.config.seed.ItemUsePuzzleSeed;
 import com.abhishri.escape.config.seed.PuzzleSeed;
 import com.abhishri.escape.config.seed.RiddlePuzzleSeed;
+import com.abhishri.escape.config.seed.RoomObjectSeed;
 import com.abhishri.escape.config.seed.RoomSeed;
 import com.abhishri.escape.config.seed.SequencePuzzleSeed;
 import com.abhishri.escape.config.seed.WorldSeed;
 import com.abhishri.escape.domain.InventoryItem;
+import com.abhishri.escape.domain.ObjectType;
 import com.abhishri.escape.domain.Room;
+import com.abhishri.escape.domain.RoomObject;
+
+import java.util.ArrayList;
+import java.util.List;
 import com.abhishri.escape.domain.puzzle.CombinationPuzzle;
 import com.abhishri.escape.domain.puzzle.ItemUsePuzzle;
 import com.abhishri.escape.domain.puzzle.Puzzle;
@@ -28,7 +34,6 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 @Service
 public class WorldSeedService {
@@ -90,8 +95,21 @@ public class WorldSeedService {
                 room.setName(s.name);
                 room.setDescription(s.description);
                 room.setConnectedRoomIds(new ArrayList<>(s.connectedRoomIds));
-                room.setObjectIds(new ArrayList<>(s.objectIds));
                 room.setPuzzleIds(new ArrayList<>(s.puzzleIds));
+                List<RoomObject> objects = new ArrayList<>();
+                if (s.objects != null) {
+                    for (RoomObjectSeed os : s.objects) {
+                        RoomObject obj = new RoomObject();
+                        obj.setId(os.id);
+                        obj.setLabel(os.label);
+                        obj.setObjectType(ObjectType.valueOf(os.objectType));
+                        obj.setPuzzleId(os.puzzleId);
+                        obj.setPickupItemId(os.pickupItemId);
+                        obj.setInteractable(os.interactable);
+                        objects.add(obj);
+                    }
+                }
+                room.setObjects(objects);
                 roomRepository.save(room);
             }
 
