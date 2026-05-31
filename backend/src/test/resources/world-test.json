@@ -4,11 +4,29 @@
       "id": "test_room",
       "name": "Test Room",
       "description": "A minimal test room.",
-      "connectedRoomIds": [],
+      "connectedRoomIds": ["test_room_2"],
       "objects": [
         {"id": "test_object", "label": "Test Object", "objectType": "SCENERY", "puzzleId": null, "pickupItemId": null, "interactable": true}
       ],
       "puzzleIds": ["test_puzzle"]
+    },
+    {
+      "id": "test_room_2",
+      "name": "Test Room Two",
+      "description": "A second test room.",
+      "connectedRoomIds": ["test_room"],
+      "objects": [
+        {"id": "test_object_2", "label": "Test Object Two", "objectType": "SCENERY", "puzzleId": null, "pickupItemId": null, "interactable": true}
+      ],
+      "puzzleIds": []
+    },
+    {
+      "id": "test_room_isolated",
+      "name": "Isolated Room",
+      "description": "An isolated test room with no connections.",
+      "connectedRoomIds": [],
+      "objects": [],
+      "puzzleIds": []
     }
   ],
   "items": [

@@ -1,0 +1,61 @@
+package com.abhishri.escape;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class ExamineMissingObjectTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    void examine_withEmptyBody_returns400InvalidRequest() throws Exception {
+        String gameId = createNewGame();
+
+        // objectId is @NotBlank — empty body violates constraint
+        mockMvc.perform(post("/api/game/{gameId}/examine", gameId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode", is("INVALID_REQUEST")));
+    }
+
+    @Test
+    void move_withEmptyBody_returns400InvalidRequest() throws Exception {
+        String gameId = createNewGame();
+
+        mockMvc.perform(post("/api/game/{gameId}/move", gameId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode", is("INVALID_REQUEST")));
+    }
+
+    private String createNewGame() throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/game/new")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isCreated())
+                .andReturn();
+        ObjectNode body = objectMapper.readValue(result.getResponse().getContentAsString(), ObjectNode.class);
+        return body.get("gameId").asText();
+    }
+}

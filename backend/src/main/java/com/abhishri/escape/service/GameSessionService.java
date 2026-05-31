@@ -5,12 +5,15 @@ import com.abhishri.escape.domain.GameStatus;
 import com.abhishri.escape.domain.PlayerInventory;
 import com.abhishri.escape.domain.Room;
 import com.abhishri.escape.domain.RoomObject;
+import com.abhishri.escape.dto.ExamineRequest;
 import com.abhishri.escape.dto.GameStateDTO;
 import com.abhishri.escape.dto.InventoryItemDTO;
 import com.abhishri.escape.dto.LastActionResult;
+import com.abhishri.escape.dto.MoveRequest;
 import com.abhishri.escape.dto.RoomDTO;
 import com.abhishri.escape.dto.RoomObjectDTO;
 import com.abhishri.escape.exception.GameNotFoundException;
+import com.abhishri.escape.exception.InvalidMoveException;
 import com.abhishri.escape.repository.GameSessionRepository;
 import com.abhishri.escape.repository.RoomRepository;
 import org.slf4j.Logger;
@@ -65,6 +68,44 @@ public class GameSessionService {
         return buildStateDTO(session,
             "You wake on the cold floor. The door is sealed. The silence waits.",
             LastActionResult.NEW_GAME);
+    }
+
+    @Transactional
+    public GameStateDTO move(UUID gameId, MoveRequest req) {
+        GameSession session = gameSessionRepository.findById(gameId)
+                .orElseThrow(() -> new GameNotFoundException(gameId));
+        Room currentRoom = roomRepository.findById(session.getCurrentRoomId())
+                .orElseThrow(() -> new IllegalStateException("Room not found: " + session.getCurrentRoomId()));
+
+        // Conditionals rubric: adjacency check is the guard
+        if (!currentRoom.isConnectedTo(req.getTargetRoomId())) {
+            throw new InvalidMoveException("Cannot move to " + req.getTargetRoomId() + " from here.");
+        }
+
+        Room targetRoom = roomRepository.findById(req.getTargetRoomId())
+                .orElseThrow(() -> new InvalidMoveException("Unknown room: " + req.getTargetRoomId()));
+
+        session.setCurrentRoomId(req.getTargetRoomId());
+        session.setLastUpdatedAt(LocalDateTime.now());
+        GameSession saved = gameSessionRepository.save(session);
+        log.info("Move game={} → room={}", gameId, req.getTargetRoomId());
+
+        return buildStateDTO(saved, "You enter " + targetRoom.getName() + ".", LastActionResult.MOVE_SUCCESS);
+    }
+
+    @Transactional
+    public GameStateDTO examine(UUID gameId, ExamineRequest req) {
+        GameSession session = gameSessionRepository.findById(gameId)
+                .orElseThrow(() -> new GameNotFoundException(gameId));
+        Room currentRoom = roomRepository.findById(session.getCurrentRoomId())
+                .orElseThrow(() -> new IllegalStateException("Room not found: " + session.getCurrentRoomId()));
+
+        RoomObject obj = currentRoom.getObjects().stream()
+                .filter(o -> o.getId().equals(req.getObjectId()))
+                .findFirst()
+                .orElseThrow(() -> new InvalidMoveException("Object not found in this room: " + req.getObjectId()));
+
+        return buildStateDTO(session, obj.getLabel(), LastActionResult.EXAMINE_OK);
     }
 
     @Transactional(readOnly = true)

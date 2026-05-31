@@ -25,7 +25,7 @@ class WorldSeedServiceTest {
 
     @Test
     void afterContextLoad_worldTestDataIsSeeded() {
-        assertThat(roomRepository.count()).isEqualTo(1);
+        assertThat(roomRepository.count()).isEqualTo(3);
         assertThat(puzzleRepository.count()).isEqualTo(1);
         assertThat(inventoryItemRepository.count()).isEqualTo(1);
     }

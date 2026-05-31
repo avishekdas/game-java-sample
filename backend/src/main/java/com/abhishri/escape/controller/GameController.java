@@ -1,12 +1,16 @@
 package com.abhishri.escape.controller;
 
+import com.abhishri.escape.dto.ExamineRequest;
 import com.abhishri.escape.dto.GameStateDTO;
+import com.abhishri.escape.dto.MoveRequest;
 import com.abhishri.escape.service.GameSessionService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,5 +35,19 @@ public class GameController {
     @GetMapping("/{gameId}")
     public ResponseEntity<GameStateDTO> getState(@PathVariable("gameId") UUID gameId) {
         return ResponseEntity.ok(gameSessionService.getState(gameId));
+    }
+
+    @PostMapping("/{gameId}/move")
+    public ResponseEntity<GameStateDTO> move(
+            @PathVariable("gameId") UUID gameId,
+            @Valid @RequestBody MoveRequest req) {
+        return ResponseEntity.ok(gameSessionService.move(gameId, req));
+    }
+
+    @PostMapping("/{gameId}/examine")
+    public ResponseEntity<GameStateDTO> examine(
+            @PathVariable("gameId") UUID gameId,
+            @Valid @RequestBody ExamineRequest req) {
+        return ResponseEntity.ok(gameSessionService.examine(gameId, req));
     }
 }
