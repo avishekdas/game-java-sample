@@ -1,0 +1,29 @@
+# --- Maven build output ---
+target/
+**/target/
+
+# --- Runtime data (game state, saves, logs) ---
+data/
+saves/
+logs/
+*.mv.db
+*.trace.db
+*.lock.db
+
+# --- IDE files ---
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# --- Java / OS ---
+*.class
+hs_err_pid*.log
+Thumbs.db
+.DS_Store
+
+# --- Environment ---
+*.env
+*.local
