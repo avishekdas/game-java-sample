@@ -42,13 +42,14 @@ Swing JVM (frontend/)  ── HTTP/JSON :8080 ──▶  Spring Boot JVM (backen
 - **`gameId` UUID in the URL path** is the only session token (no HTTP session, no cookies).
 - **`Puzzle` JOINED inheritance** (`@Inheritance(strategy = JOINED)`) — canonical AP CS Inheritance demo.
   Four child tables visible in H2: `COMBINATION_PUZZLE`, `RIDDLE_PUZZLE`, `SEQUENCE_PUZZLE`, `ITEM_USE_PUZZLE`.
-- **`@Embeddable RoomObject`** on `Room.objects` (option 1, chosen this session) — replaces the
-  original `ROOM_OBJECT_IDS` plain-string table. Schema: `ROOM_OBJECTS` with columns
+- **`@Embeddable RoomObject`** on `Room.objects` — schema: `ROOM_OBJECTS` table with columns
   `OBJECT_ID`, `OBJECT_LABEL`, `OBJECT_TYPE`, `PUZZLE_ID`, `PICKUP_ITEM_ID`, `INTERACTABLE`.
 - **`jakarta.persistence.*` everywhere** — NOT `javax.*`. Spring Boot 3.x / Jakarta EE 9+.
 - **Synchronous `HttpClient.send()` on Swing EDT in Phase 1** — no SwingWorker (deferred to Phase 2).
 - **DTO duplication** between `backend/dto/` and `frontend/api/dto/` is intentional. No shared module.
 - **UUIDs set explicitly** in service code (`UUID.randomUUID()`), not via `@GeneratedValue`.
+- **`PuzzleEvaluationService` depends on `GameSessionService`** (calls `buildStateDTO`). No circular
+  dependency — `GameSessionService` does not depend on `PuzzleEvaluationService`.
 
 ---
 
@@ -91,14 +92,14 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
 | M2 — Domain Entities & Repositories | ✅ DONE | 10 entities, 5 repos, 17 H2 tables, `@OrderColumn` canary test |
 | M3 — World Seeding | ✅ DONE | Seed POJOs + `@JsonTypeInfo`, `WorldSeedService`, `WorldSeedValidator`, full `world.json` |
 | M4 — Game Session Lifecycle | ✅ DONE | `GameStateDTO` + all DTOs, `GameSessionService`, `InventoryService`, `GameController`, `BackendConfig`, `GlobalExceptionHandler` |
-| **M5 — Navigation + Examination** | ⬅ **NEXT** | `POST /move`, `POST /examine`, 409 on invalid move/object |
-| M6 — Inventory + Pickup | pending | `POST /pickup`, `InventoryService.addItem/hasItem` |
-| M7 — Puzzle Evaluation: Combo + Riddle | pending | `PuzzleEvaluationService`, `POST /attempt-puzzle` |
-| M8 — Sequence + ItemUse + Win ★ | pending | North-star: full game winnable via curl |
+| M5 — Navigation + Examination | ✅ DONE | `POST /move`, `POST /examine`, 409 on invalid; Conditionals rubric |
+| M6 — Inventory + Pickup | ✅ DONE | `POST /pickup`, `InventoryService.addItem/hasItem/removeItem`, 409 on non-pickupable/already held |
+| M7 — Puzzle Evaluation: Combo + Riddle | ✅ DONE | `PuzzleEvaluationService`, `POST /attempt-puzzle`, prereq check, idempotent reward |
+| **M8 — Sequence + ItemUse + Win ★** | ⬅ **NEXT** | North-star: full game winnable via curl |
 | M9 — Save / Load | pending | `SaveLoadService`, File I/O rubric demo |
 | M10–M14 — Swing Frontend | pending | M10: skeleton; M13: north-star clicks ★ |
 
-**Test count as of M4:** 27 backend tests, 1 frontend sanity test. All green.
+**Test count as of M7:** 60 backend tests, 1 frontend sanity test. All green.
 
 ---
 
@@ -110,35 +111,45 @@ backend/src/main/java/com/abhishri/escape/
 ├── config/
 │   ├── BackendConfig.java              (CORS, ObjectMapper bean)
 │   └── seed/
-│       ├── WorldSeed.java + RoomSeed.java + ItemSeed.java
+│       ├── WorldSeed.java + RoomSeed.java + ItemSeed.java + RoomObjectSeed.java
 │       ├── PuzzleSeed.java             (@JsonTypeInfo + @JsonSubTypes)
 │       └── CombinationPuzzleSeed, RiddlePuzzleSeed, SequencePuzzleSeed, ItemUsePuzzleSeed
-│       └── RoomObjectSeed.java
 ├── controller/
 │   ├── HealthController.java           GET /api/health
-│   └── GameController.java             POST /api/game/new, GET /api/game/{gameId}
+│   └── GameController.java             POST /new, GET /{id}, POST /{id}/move,
+│                                       POST /{id}/examine, POST /{id}/pickup,
+│                                       POST /{id}/attempt-puzzle
+│                                       [POST /{id}/use-item added in M8]
 ├── domain/
 │   ├── GameSession.java, GameStatus.java, PlayerInventory.java
 │   ├── Room.java, RoomObject.java (@Embeddable), ObjectType.java (enum), InventoryItem.java
 │   └── puzzle/
 │       ├── Puzzle.java                 (abstract, @Inheritance JOINED)
-│       ├── CombinationPuzzle.java, RiddlePuzzle.java, SequencePuzzle.java, ItemUsePuzzle.java
+│       ├── CombinationPuzzle.java      attempt(): checks inputs.get("code")
+│       ├── RiddlePuzzle.java           attempt(): trims, respects caseSensitive
+│       ├── SequencePuzzle.java         attempt(): loop over expectedSequence (M8)
+│       └── ItemUsePuzzle.java          attempt(): checks requiredItemId + targetObjectId (M8)
 ├── dto/
 │   ├── GameStateDTO.java, RoomDTO.java, RoomObjectDTO.java, InventoryItemDTO.java
 │   ├── LastActionResult.java (enum), ErrorResponseDTO.java
-│   └── [request DTOs added per milestone: MoveRequest, ExamineRequest, etc.]
+│   ├── MoveRequest.java, ExamineRequest.java, PickupRequest.java
+│   ├── AttemptPuzzleRequest.java
+│   └── [UseItemRequest added in M8]
 ├── exception/
 │   ├── ApiErrorCode.java (enum), GlobalExceptionHandler.java
 │   ├── GameNotFoundException.java, InvalidMoveException.java
-│   └── [more added per milestone]
+│   ├── PuzzleNotFoundException.java, PrerequisiteNotMetException.java
+│   └── [ItemNotInInventoryException added in M8]
 ├── repository/
 │   └── GameSessionRepository, RoomRepository, PuzzleRepository,
 │       PlayerInventoryRepository, InventoryItemRepository
 └── service/
-    ├── GameSessionService.java         createNewGame, getState, buildStateDTO
-    ├── InventoryService.java           snapshot (M4), addItem/hasItem (M6)
+    ├── GameSessionService.java         createNewGame, getState, buildStateDTO,
+    │                                   move, examine, pickup
+    ├── InventoryService.java           snapshot, addItem, hasItem, removeItem
+    ├── PuzzleEvaluationService.java    attempt (M7); useItem (M8)
     ├── WorldSeedService.java + WorldSeedValidator.java
-    └── [PuzzleEvaluationService, SaveLoadService added in M7–M9]
+    └── [SaveLoadService added in M9]
 
 backend/src/main/resources/
 ├── application.properties
@@ -146,7 +157,7 @@ backend/src/main/resources/
 
 backend/src/test/resources/
 ├── application-test.properties         (in-memory H2, world-test.json, starting-room=test_room)
-├── world-test.json                     (1 room, 1 puzzle, 1 item)
+├── world-test.json                     (3 rooms, 3 puzzles, 3 items — extended through M7)
 └── world-broken.json                   (referential integrity failure fixture)
 
 frontend/  — empty stubs only (M10+)
@@ -154,29 +165,64 @@ frontend/  — empty stubs only (M10+)
 
 ---
 
-## 7. What M5 Must Build
+## 7. What M8 Must Build
 
-**Red tests first (per plan.md §M5):**
-- `MoveValidationTest` — service unit: move to adjacent room updates `currentRoomId`;
-  move to non-adjacent throws `InvalidMoveException`
-- `MoveIntegrationTest` — foyer→reading_hall returns 200; foyer→archives returns 409 `INVALID_MOVE`
-- `ExamineIntegrationTest` — examine `wall_clock` in foyer returns 200 with `dialogueMessage`;
-  examine `display_case` while in foyer returns 409 (object not in room)
-- `ExamineMissingObjectTest` — empty body returns 400 `INVALID_REQUEST`
+**North-star milestone — game fully winnable via curl after this.**
+
+**Red tests first (per plan.md §M8):**
+
+*Entity-level (no Spring):*
+- `sequencePuzzle_correctOrder_returnsTrue`
+- `sequencePuzzle_wrongOrder_returnsFalse`
+- `sequencePuzzle_extraItems_returnsFalse`
+- `itemUsePuzzle_correctItemAndTarget_returnsTrue`
+- `itemUsePuzzle_wrongItem_returnsFalse`
+- `itemUsePuzzle_wrongTarget_returnsFalse`
+
+*Integration:*
+- `UseItemHappyPathTest`: after solving `test_combo_puzzle` (awards `test_combo_reward`),
+  POST `/use-item` with `{"itemId":"test_combo_reward","targetObjectId":"<targetObj>"}` → 200, puzzle solved
+- `UseItemNotInInventoryTest`: use an item not held → 409 `ITEM_NOT_IN_INVENTORY`
+- `UseItemNoMatchingPuzzleTest`: use item+target with no matching `ItemUsePuzzle` → 404 `PUZZLE_NOT_FOUND`
+- **`GameFlowIntegrationTest.goldenPath_solveAllPuzzles_winConditionFires`**: solve all 3 test-world
+  puzzles, assert final response has `gameStatus = COMPLETE`
 
 **Green:**
-- `MoveRequest` DTO (`@NotBlank targetRoomId`)
-- `ExamineRequest` DTO (`@NotBlank objectId`)
-- `GameSessionService.move(UUID, MoveRequest)` — uses `room.isConnectedTo()` conditional
-- `GameSessionService.examine(UUID, ExamineRequest)` — uses `room.containsObject()` conditional
-- Wire `@PostMapping("/{gameId}/move")` and `@PostMapping("/{gameId}/examine")` in `GameController`
-- Add `MethodArgumentNotValidException` handler to `GlobalExceptionHandler` (400)
+- `SequencePuzzle.attempt()` — already implemented (M2); just needs tests
+- `ItemUsePuzzle.attempt()` — already stubbed (M2); implement checking `requiredItemId` + `targetObjectId`
+- `UseItemRequest` DTO (`@NotBlank itemId`, `@NotBlank targetObjectId`)
+- `ItemNotInInventoryException` + 409 handler in `GlobalExceptionHandler`
+- `PuzzleEvaluationService.useItem(UUID, UseItemRequest)` — finds matching `ItemUsePuzzle` in current
+  room by `(requiredItemId, targetObjectId)`, checks item in inventory, evaluates, awards reward
+- `GameController.useItem` endpoint: `POST /{gameId}/use-item`
+- **Win-condition check** in `GameSessionService.buildStateDTO()`:
+  ```java
+  if (!session.isComplete() && session.getSolvedPuzzleIds().containsAll(allPuzzleIds)) {
+      session.setStatus(GameStatus.COMPLETE);
+      gameSessionRepository.save(session);
+  }
+  ```
+  `allPuzzleIds` is loaded once from `PuzzleRepository.findAll()` at startup and cached (or queried inline).
 
-**⚠ Plan gap already resolved:** Use `room.containsObject(objectId)` (method added to `Room` in M4)
-for the object-in-room check. The `RoomObject` embeddable has full metadata. Examine returns
-`RoomObject.label` + room description as the `dialogueMessage`.
+**Test-world additions needed for M8:**
+- Add an `ItemUsePuzzle` to `world-test.json`: e.g. `test_item_use_puzzle`
+  (`requiredItemId: "test_combo_reward"`, `targetObjectId: "some_target"`, `roomId: "test_room"`)
+- Add a `SequencePuzzle` to `world-test.json`: e.g. `test_seq_puzzle`
+  (`expectedSequence: ["a","b","c"]`)
+- Update `WorldSeedServiceTest` counts accordingly.
 
-**Rubric:** Conditionals concept demonstrated by the adjacency check in `move()`.
+**Rubric:** Loops concept demonstrated by `SequencePuzzle.attempt()` iterating `expectedSequence`.
+
+**Important — `ItemUsePuzzle` implementation note:**  
+Check `ItemUsePuzzle.java` — `attempt()` may just be a stub from M2. If so, implement:
+```java
+@Override
+public boolean attempt(Map<String, String> inputs) {
+    String item = inputs.get("itemId");
+    String target = inputs.get("targetObjectId");
+    return requiredItemId.equals(item) && targetObjectId.equals(target);
+}
+```
 
 ---
 
@@ -194,6 +240,9 @@ for the object-in-room check. The `RoomObject` embeddable has full metadata. Exa
 | 8 | `@GeneratedValue(UUID)` not simulated by Mockito `save()` mock | UUIDs set explicitly in service (`UUID.randomUUID()`) — no `@GeneratedValue` |
 | 9 | `@DataJpaTest` tests pick up all `@SpringBootTest` classes for context sharing | Use `@ActiveProfiles("test")` consistently; `application-test.properties` isolates |
 | 10 | `world.json` used `objectIds` (strings); replaced with `objects` (RoomObjectSeed) | `RoomSeed` now has `List<RoomObjectSeed> objects`; `Room` entity has `List<RoomObject> objects` |
+| 11 | Lambda captures variable that is later reassigned — compile error | Use a new variable for the saved result: `GameSession saved = repo.save(session)` |
+| 12 | `UnnecessaryStubbing` with Mockito STRICT_STUBS | Put stubs that are test-specific into individual test methods, not `@BeforeEach` |
+| 13 | `WorldSeedServiceTest` count assertions break when `world-test.json` is extended | Update count expectations every time test fixture gains new entities |
 
 ---
 
@@ -202,7 +251,7 @@ for the object-in-room check. The `RoomObject` embeddable has full metadata. Exa
 ```
 git remote: git@github.com:avishekdas/game-java-sample.git
 branch: main
-last commit: feat(M4): game session lifecycle
+last commit: feat(M7): puzzle evaluation — combination and riddle types
 ```
 
 ---
@@ -211,10 +260,10 @@ last commit: feat(M4): game session lifecycle
 
 | Concept | First landed | Where |
 |---------|-------------|-------|
-| Classes & Objects | M2 | Every entity |
-| Inheritance | M2 | `Puzzle` → 4 subclasses, JOINED in H2 |
+| Classes & Objects | M2 | Every entity in `com.abhishri.escape.domain` |
+| Inheritance | M2 + M7 | `Puzzle` → 4 subclasses, JOINED in H2; polymorphic `attempt()` dispatched live in M7 |
 | ArrayLists | M2 | `solvedPuzzleIds`, `heldItemIds`, `connectedRoomIds`, `expectedSequence` |
-| Loops | M8 (pending) | `SequencePuzzle.attempt()` — iterate expected vs submitted |
-| Conditionals | **M5 (next)** | Room adjacency in `GameSessionService.move()` |
+| Loops | **M8 (next)** | `SequencePuzzle.attempt()` — iterate expected vs submitted |
+| Conditionals | M5 | Room adjacency check in `GameSessionService.move()` |
 | File I/O | M3 + M9 | M3: `WorldSeedService` reads `world.json`; M9: `SaveLoadService` writes JSON snapshots |
 | GUI | M10–M14 (pending) | `MainFrame`, `ScenePanel`, all `PuzzleDialog` subclasses |
