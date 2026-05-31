@@ -1,0 +1,26 @@
+{
+  "rooms": [
+    {
+      "id": "test_room",
+      "name": "Test Room",
+      "description": "A test room.",
+      "connectedRoomIds": [],
+      "objectIds": [],
+      "puzzleIds": ["puzzle_bad"]
+    }
+  ],
+  "items": [],
+  "puzzles": [
+    {
+      "type": "RIDDLE",
+      "id": "puzzle_bad",
+      "roomId": "room_nonexistent",
+      "description": "Broken puzzle — references a room that does not exist.",
+      "rewardItemId": null,
+      "prerequisitePuzzleIds": [],
+      "questionText": "Q?",
+      "expectedAnswer": "A",
+      "caseSensitive": false
+    }
+  ]
+}

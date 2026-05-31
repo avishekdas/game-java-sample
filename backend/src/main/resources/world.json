@@ -1,0 +1,128 @@
+{
+  "rooms": [
+    {
+      "id": "room_foyer",
+      "name": "The Entry Foyer",
+      "description": "You wake on the cold marble of Thornwick Library's foyer. The front door is sealed by an electromagnetic lock. A wall clock above the reception desk is stopped at 11:47. A welcome mat curls at your feet; a battered umbrella stand leans against the wall. There are 3 brass nails set into the door frame.",
+      "connectedRoomIds": ["room_reading_hall"],
+      "objectIds": ["wall_clock", "reception_desk", "welcome_mat", "umbrella_stand", "front_door"],
+      "puzzleIds": ["puzzle_clock"]
+    },
+    {
+      "id": "room_reading_hall",
+      "name": "The Reading Hall",
+      "description": "Eight tall bookshelves climb to a vaulted ceiling. A librarian's rolling cart sits half-shelved beside the 800-section. A glass display case glints in the lamplight, locked with a three-digit dial. A fireplace yawns cold against the north wall; the iron grate is loose.",
+      "connectedRoomIds": ["room_foyer", "room_archives"],
+      "objectIds": ["display_case", "book_cart", "fireplace", "reading_lamp"],
+      "puzzleIds": ["puzzle_display_case", "puzzle_bookshelf"]
+    },
+    {
+      "id": "room_archives",
+      "name": "The Archives",
+      "description": "Steel filing cabinets line the walls in 4 long rows. A brass cipher wheel is bolted to the south wall, its outer ring etched with letters. An iron chest sits dead-center, its lid stamped with a single keyhole. The pneumatic-tube terminal hisses softly in the corner, its tube empty and waiting. The manuscript pedestal stands bare.",
+      "connectedRoomIds": ["room_reading_hall"],
+      "objectIds": ["cipher_wheel", "iron_chest", "pneumatic_tube_terminal", "manuscript_pedestal", "filing_cabinets"],
+      "puzzleIds": ["puzzle_cipher_wheel", "puzzle_iron_chest", "puzzle_terminal"]
+    }
+  ],
+
+  "items": [
+    {
+      "id": "desk_key",
+      "name": "Desk Key",
+      "description": "A small brass key, warm to the touch. Fits a desk drawer.",
+      "assetKey": "item_key"
+    },
+    {
+      "id": "brass_magnifying_glass",
+      "name": "Brass Magnifying Glass",
+      "description": "Heavier than it looks. The lens is etched with hairline grid lines.",
+      "assetKey": "item_lens"
+    },
+    {
+      "id": "fireplace_scrap",
+      "name": "Scrap of Paper",
+      "description": "A charred scrap, partially legible: '...the second digit is 8...'",
+      "assetKey": "item_scrap"
+    },
+    {
+      "id": "manuscript_page",
+      "name": "Torn Manuscript Page",
+      "description": "A handwritten page in old library script. It names a thief.",
+      "assetKey": "item_manuscript"
+    },
+    {
+      "id": "evidence_token",
+      "name": "Evidence Token",
+      "description": "Proof transmitted. The lock is open. You won.",
+      "assetKey": "item_token"
+    }
+  ],
+
+  "puzzles": [
+    {
+      "type": "RIDDLE",
+      "id": "puzzle_clock",
+      "roomId": "room_foyer",
+      "description": "A riddle is carved into the clock frame.",
+      "rewardItemId": "desk_key",
+      "prerequisitePuzzleIds": [],
+      "questionText": "The clock's hands are frozen. The frame reads: 'When does the library's silence begin? Answer in HH:MM.'",
+      "expectedAnswer": "11:47",
+      "caseSensitive": false
+    },
+    {
+      "type": "COMBINATION",
+      "id": "puzzle_display_case",
+      "roomId": "room_reading_hall",
+      "description": "A three-dial combination lock guards the display case. The digits are hidden in the room descriptions: 3 brass nails in the foyer, 8 bookshelves in the reading hall, 4 rows of filing cabinets in the archives.",
+      "rewardItemId": "brass_magnifying_glass",
+      "prerequisitePuzzleIds": [],
+      "expectedCode": "384",
+      "digitCount": 3
+    },
+    {
+      "type": "SEQUENCE",
+      "id": "puzzle_bookshelf",
+      "roomId": "room_reading_hall",
+      "description": "Six books from the librarian's cart must be reshelved in Dewey Decimal order. Smallest number first.",
+      "rewardItemId": "fireplace_scrap",
+      "prerequisitePuzzleIds": [],
+      "expectedSequence": ["510", "520", "610", "621", "720", "810"],
+      "availableItems": ["810", "510", "720", "520", "621", "610"]
+    },
+    {
+      "type": "ITEM_USE",
+      "id": "puzzle_cipher_wheel",
+      "roomId": "room_archives",
+      "description": "The cipher wheel's letters are too small to read by lamplight alone.",
+      "rewardItemId": null,
+      "prerequisitePuzzleIds": ["puzzle_display_case"],
+      "requiredItemId": "brass_magnifying_glass",
+      "targetObjectId": "cipher_wheel",
+      "outcomeMessage": "Under the lens, etched letters resolve into a single word: THORNWICK."
+    },
+    {
+      "type": "RIDDLE",
+      "id": "puzzle_iron_chest",
+      "roomId": "room_archives",
+      "description": "The iron chest demands a passphrase.",
+      "rewardItemId": "manuscript_page",
+      "prerequisitePuzzleIds": ["puzzle_cipher_wheel"],
+      "questionText": "The chest's brass plate reads: 'Speak the name of this place to open me.'",
+      "expectedAnswer": "THORNWICK",
+      "caseSensitive": false
+    },
+    {
+      "type": "ITEM_USE",
+      "id": "puzzle_terminal",
+      "roomId": "room_archives",
+      "description": "The pneumatic-tube terminal waits for evidence to transmit.",
+      "rewardItemId": "evidence_token",
+      "prerequisitePuzzleIds": ["puzzle_clock", "puzzle_display_case", "puzzle_bookshelf", "puzzle_cipher_wheel", "puzzle_iron_chest"],
+      "requiredItemId": "manuscript_page",
+      "targetObjectId": "pneumatic_tube_terminal",
+      "outcomeMessage": "The tube hisses. Evidence received. The front door's electromagnetic lock disengages. You are free."
+    }
+  ]
+}

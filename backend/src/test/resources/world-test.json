@@ -1,0 +1,33 @@
+{
+  "rooms": [
+    {
+      "id": "test_room",
+      "name": "Test Room",
+      "description": "A minimal test room.",
+      "connectedRoomIds": [],
+      "objectIds": ["test_object"],
+      "puzzleIds": ["test_puzzle"]
+    }
+  ],
+  "items": [
+    {
+      "id": "test_item",
+      "name": "Test Item",
+      "description": "A test item.",
+      "assetKey": "item_test"
+    }
+  ],
+  "puzzles": [
+    {
+      "type": "RIDDLE",
+      "id": "test_puzzle",
+      "roomId": "test_room",
+      "description": "A test riddle.",
+      "rewardItemId": "test_item",
+      "prerequisitePuzzleIds": [],
+      "questionText": "Yes or no?",
+      "expectedAnswer": "yes",
+      "caseSensitive": false
+    }
+  ]
+}
