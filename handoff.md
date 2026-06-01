@@ -97,10 +97,11 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
 | M7 — Puzzle Evaluation: Combo + Riddle | ✅ DONE | `PuzzleEvaluationService`, `POST /attempt-puzzle`, prereq check, idempotent reward |
 | M8 — Sequence + ItemUse + Win ★ | ✅ DONE | `POST /use-item`, win condition, 75 backend tests |
 | M9 — Save / Load | ✅ DONE | `SaveLoadService`, File I/O rubric, 86 backend tests |
-| **M10 — Swing Skeleton** | ⬅ **NEXT** | `EscapeRoomApp`, `MainFrame`, `GameApiClient`, `ScenePanel` stub |
-| M11–M14 — Swing Frontend | pending | M11: ScenePanel+Inventory; M13: north-star clicks ★ |
+| M10 — Swing Skeleton | ✅ DONE | `EscapeRoomApp`, `MainFrame` (4 panels), `ScenePanel`, `AssetManager`, 88 total tests |
+| **M11 — Swing Frontend: Scene + Inventory** | ⬅ **NEXT** | `GameApiClient` methods, ScenePanel hotspot clicks, InventoryPanel wired |
+| M12–M14 — Swing Frontend | pending | M12: puzzle dialogs; M13: north-star clicks ★; M14: polish |
 
-**Test count as of M9:** 86 backend tests, 1 frontend sanity test. All green.
+**Test count as of M10:** 86 backend tests, 2 frontend tests. All green.
 
 ---
 
@@ -164,49 +165,59 @@ backend/src/test/resources/
 ├── world-test.json                     (3 rooms, 5 puzzles, 3 items — extended through M8)
 └── world-broken.json                   (referential integrity failure fixture)
 
-frontend/  — empty stubs only (M10+)
+frontend/src/main/java/com/abhishri/escape/ui/
+├── dto/
+│   ├── GameStateDTO.java, RoomDTO.java, InventoryItemDTO.java, RoomObjectDTO.java
+│   ├── LastActionResult.java (enum), GameStatus.java (enum), ObjectType.java (enum)
+├── AssetManager.java              (interface: getBackground, getItemIcon)
+├── PlaceholderAssetManager.java   (BufferedImage colored rects — no PNG required)
+├── Hotspot.java                   (POJO: id, type, label, bounds, objectId)
+├── ScenePanel.java                (extends JPanel, paintComponent, List<Hotspot>)
+├── InventoryPanel.java            (JList<InventoryItemDTO>, DefaultListModel)
+├── DialoguePanel.java             (JTextArea in JScrollPane, non-editable)
+├── StatusBar.java                 (JLabel + Save/Load/New JButtons, no listeners yet)
+├── GameApiClient.java             (stub: constructor + fields only — M11 adds methods)
+├── MainFrame.java                 (BorderLayout: StatusBar N, ScenePanel C, Inventory E, Dialogue S)
+└── EscapeRoomApp.java             (main() — SwingUtilities.invokeLater)
 ```
 
 ---
 
-## 7. What M10 Must Build
+## 7. What M11 Must Build
 
-**Goal:** `mvn -pl frontend exec:java` opens a Swing window with a placeholder foyer. No backend connection — window works even with backend down.
+**Goal:** Wire `GameApiClient` to backend. `ScenePanel` hotspots are clickable and dispatch actions to the backend. `InventoryPanel` and `DialoguePanel` update from the returned `GameStateDTO`. `StatusBar` Save/Load/New buttons get listeners.
 
-**Red tests first (per plan.md §M10):**
+**Red tests first:**
 
-- `MainFrameSmokeTest`: `SwingUtilities.invokeAndWait(() -> new MainFrame(...).setVisible(true))`,
-  assert `frame.isVisible()`, `frame.getContentPane().getComponentCount() == 4`
-  (StatusBar north, ScenePanel center, InventoryPanel east, DialoguePanel south)
+- `GameApiClientTest` — unit tests using a mock `HttpClient` (or real HTTP against `@SpringBootTest`):
+  - `newGame_returnsGameStateDTO()`
+  - `getState_returnsCurrentState()`
+  - `move_returnsUpdatedState()`
+- `ScenePanelInteractionTest` — with `MouseListener` hooked up, clicking within a hotspot's bounds fires the correct action on a mocked `GameApiClient`
 
 **Green:**
 
-- `EscapeRoomApp.java` — `main()` calls `SwingUtilities.invokeLater(() -> new MainFrame(...).setVisible(true))`
-- `MainFrame extends JFrame` — `BorderLayout`, four panels, `WindowAdapter` for clean close.
-  Renders hardcoded placeholder foyer (no API call yet)
-- `ScenePanel extends JPanel` — `paintComponent` draws background via `AssetManager.getBackground(roomId)`,
-  then iterates `List<Hotspot>` drawing labeled rectangles
-- `InventoryPanel extends JPanel` — `JList<InventoryItemDTO>` placeholder (empty model)
-- `DialoguePanel extends JPanel` — `JTextArea` (non-editable, wrapped in `JScrollPane`)
-- `StatusBar extends JPanel` — `JLabel` room name + Save/Load/New `JButton`s (no listeners yet)
-- `AssetManager` interface — `Image getBackground(String roomId)`, `Image getItemIcon(String assetKey)`
-- `PlaceholderAssetManager implements AssetManager` — returns a colored rectangle painted on a
-  `BufferedImage` (no PNG required); ships as the default implementation
-- `Hotspot` POJO — `id`, `type` (String from `ObjectType`), `label`, `bounds` (Rectangle), `objectId`
+- `GameApiClient` methods (all synchronous `HttpClient.send()` on EDT per Phase 1 contract):
+  - `GameStateDTO newGame()`
+  - `GameStateDTO getState(UUID gameId)`
+  - `GameStateDTO move(UUID gameId, String targetRoomId)`
+  - `GameStateDTO examine(UUID gameId, String objectId)`
+  - `GameStateDTO pickup(UUID gameId, String objectId)`
+  - `GameStateDTO attemptPuzzle(UUID gameId, String puzzleId, Map<String,String> inputs)`
+  - `GameStateDTO useItem(UUID gameId, String itemId, String targetObjectId)`
+  - `GameStateDTO saveGame(UUID gameId)`
+  - `GameStateDTO loadGame(UUID gameId, String filename)`
+- `ScenePanel` — `MouseListener` maps click coordinates to hotspot, calls back to `MainFrame`
+- `MainFrame` — wires `GameApiClient` through; `applyState(GameStateDTO)` updates all panels
+- `StatusBar` — Save/Load/New buttons get listeners
 
 **Important notes:**
-- `frontend/pom.xml` already exists (or exists as a stub from M0). Check if Jackson + JUnit 5 are present.
-  If not, add them: `jackson-databind`, `jackson-datatype-jsr310`, `junit-jupiter`. The `exec-maven-plugin`
-  target `com.abhishri.escape.ui.EscapeRoomApp` must be configured.
-- Frontend packages root: `com.abhishri.escape.ui`
-- DTOs duplicated from backend (`GameStateDTO`, `RoomDTO`, `InventoryItemDTO`, `RoomObjectDTO`,
-  `LastActionResult`) — kept in `com.abhishri.escape.ui.dto` (intentional, per `idea.md §8`)
-- `MainFrameSmokeTest` must use `SwingUtilities.invokeAndWait` because Swing is not thread-safe.
-  Use `GraphicsEnvironment.isHeadless()` as a guard if running in CI without a display.
-- The `GameApiClient` stub (constructor + fields only, no methods yet) is acceptable in M10;
-  full implementation lands in M11.
+- `ObjectMapper` in `GameApiClient` must register `JavaTimeModule` and disable `WRITE_DATES_AS_TIMESTAMPS`.
+- `GameApiClient` constructor takes `String baseUrl` and `ObjectMapper` — default URL is `http://127.0.0.1:8080/api/game`.
+- Backend must be running for integration: `JAVA_HOME=... mvn -pl backend spring-boot:run`.
+- No `SwingWorker` — synchronous calls only (Phase 1 scope).
 
-**Rubric:** GUI concept — every panel, every button, every `paintComponent` override counts.
+**Rubric:** GUI concept — `MouseListener` on `ScenePanel` is a required GUI rubric demonstration.
 
 ---
 
@@ -235,7 +246,7 @@ frontend/  — empty stubs only (M10+)
 ```
 git remote: git@github.com:avishekdas/game-java-sample.git
 branch: main
-last commit: feat(M9): save/load service — File I/O rubric demo
+last commit: feat(M10): Swing frontend skeleton — MainFrame, ScenePanel, AssetManager, GUI rubric
 ```
 
 ---
@@ -250,4 +261,4 @@ last commit: feat(M9): save/load service — File I/O rubric demo
 | Loops | M8 | `SequencePuzzle.attempt()` — iterates `expectedSequence` to verify submitted order |
 | Conditionals | M5 | Room adjacency check in `GameSessionService.move()` |
 | File I/O | M3 + M9 | M3: `WorldSeedService` reads `world.json`; M9: `SaveLoadService` writes/reads `GameSnapshotDTO` JSON files |
-| GUI | M10–M14 (pending) | `MainFrame`, `ScenePanel`, all `PuzzleDialog` subclasses |
+| GUI | M10 | `MainFrame` (BorderLayout, 4 panels), `ScenePanel` (`paintComponent`, `List<Hotspot>`), `StatusBar` (3 JButtons), `AssetManager` interface + `PlaceholderAssetManager` |
