@@ -50,6 +50,8 @@ public class ScenePanel extends JPanel {
         this.hotspotClickListener = listener;
     }
 
+    List<Hotspot> getHotspots() { return hotspots; }
+
     Hotspot findHotspotAt(int x, int y) {
         for (Hotspot h : hotspots) {
             if (h.getBounds().contains(x, y)) {

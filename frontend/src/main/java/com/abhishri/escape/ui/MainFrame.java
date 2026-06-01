@@ -13,9 +13,12 @@ import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class MainFrame extends JFrame {
@@ -70,6 +73,10 @@ public class MainFrame extends JFrame {
     }
 
     public void applyState(GameStateDTO state) {
+        Set<String> solvedIds = state.getSolvedPuzzleIds() != null
+                ? new HashSet<>(state.getSolvedPuzzleIds())
+                : Collections.emptySet();
+
         if (state.getCurrentRoom() != null) {
             Map<String, RoomObjectDTO> map = new HashMap<>();
             for (RoomObjectDTO obj : state.getCurrentRoom().getObjects()) {
@@ -78,14 +85,14 @@ public class MainFrame extends JFrame {
             roomObjectsByHotspotId = map;
             statusBar.setRoomName(state.getCurrentRoom().getName());
             scenePanel.setCurrentRoomId(state.getCurrentRoom().getId());
-            scenePanel.setHotspots(buildHotspots(state.getCurrentRoom()));
+            scenePanel.setHotspots(buildHotspots(state.getCurrentRoom(), solvedIds));
         }
         if (state.getInventory() != null) {
             inventoryPanel.setItems(state.getInventory());
         }
-        if (state.getSolvedPuzzleIds() != null) {
+        if (!solvedIds.isEmpty()) {
             int total = state.getTotalPuzzles() > 0 ? state.getTotalPuzzles() : 6;
-            statusBar.setSolvedCount(state.getSolvedPuzzleIds().size(), total);
+            statusBar.setSolvedCount(solvedIds.size(), total);
         }
         if (state.getDialogueMessage() != null && !state.getDialogueMessage().isBlank()) {
             dialoguePanel.append(state.getDialogueMessage());
@@ -264,7 +271,7 @@ public class MainFrame extends JFrame {
         return msg;
     }
 
-    private List<Hotspot> buildHotspots(RoomDTO room) {
+    private List<Hotspot> buildHotspots(RoomDTO room, Set<String> solvedIds) {
         List<Hotspot> hotspots = new ArrayList<>();
         int panelW = scenePanel.getWidth();
         int panelH = scenePanel.getHeight();
@@ -281,7 +288,9 @@ public class MainFrame extends JFrame {
                 int x = spacing * (i + 1) - 50;
                 Rectangle bounds = new Rectangle(x, baseY - 30, 100, 60);
                 String type = obj.getObjectType() != null ? obj.getObjectType().name() : "SCENERY";
-                hotspots.add(new Hotspot(obj.getId(), type, obj.getLabel(), bounds, obj.getId()));
+                // ⚠ Solved lookup uses obj.getPuzzleId() (e.g. "puzzle_clock"), NOT obj.getId()
+                boolean solved = "PUZZLE".equals(type) && solvedIds.contains(obj.getPuzzleId());
+                hotspots.add(new Hotspot(obj.getId(), type, obj.getLabel(), bounds, obj.getId(), solved));
             }
         }
 
