@@ -21,6 +21,11 @@ public class FileAssetManager implements AssetManager {
         return loaded != null ? loaded : fallback.getItemIcon(assetKey);
     }
 
+    @Override
+    public java.awt.Image getHintCard(String objectId) {
+        return fallback.getHintCard(objectId);
+    }
+
     private Image loadFromClasspath(String path) {
         try (InputStream stream = getClass().getResourceAsStream(path)) {
             if (stream == null) return null;

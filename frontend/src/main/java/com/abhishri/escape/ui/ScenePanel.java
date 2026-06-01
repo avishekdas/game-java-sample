@@ -15,6 +15,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -32,8 +33,13 @@ public class ScenePanel extends JPanel {
     private float fadeAlpha = 1.0f;
     private Consumer<Hotspot> hotspotClickListener;
 
-    // Package-private so ScenePanelFadeGuardTest can access it directly
+    private BufferedImage hintCardImage = null;
+    private float hintCardAlpha = 0.0f;
+    private int hintCardTicks = 0;
+
+    // Package-private so tests can access timers directly
     final Timer fadeTimer;
+    final Timer hintCardTimer;
 
     public ScenePanel(AssetManager assetManager) {
         this.assetManager = assetManager;
@@ -43,6 +49,18 @@ public class ScenePanel extends JPanel {
         fadeTimer = new Timer(16, e -> {
             fadeAlpha = Math.min(1.0f, fadeAlpha + 0.08f);
             if (fadeAlpha >= 1.0f) ((Timer) e.getSource()).stop();
+            repaint();
+        });
+
+        hintCardTimer = new Timer(16, e -> {
+            hintCardTicks++;
+            if (hintCardTicks > 125) {
+                hintCardAlpha = Math.max(0.0f, hintCardAlpha - 0.05f);
+                if (hintCardAlpha <= 0.0f) {
+                    hintCardImage = null;
+                    ((Timer) e.getSource()).stop();
+                }
+            }
             repaint();
         });
 
@@ -85,6 +103,15 @@ public class ScenePanel extends JPanel {
         this.hotspotClickListener = listener;
     }
 
+    public void showHintCard(BufferedImage image) {
+        hintCardImage = image;
+        hintCardAlpha = 1.0f;
+        hintCardTicks = 0;
+        if (hintCardTimer.isRunning()) hintCardTimer.stop();
+        hintCardTimer.start();
+        repaint();
+    }
+
     // --- Package-private accessors for tests ---
 
     List<Hotspot> getHotspots() { return hotspots; }
@@ -92,6 +119,10 @@ public class ScenePanel extends JPanel {
     String getHoveredHotspotId() { return hoveredHotspotId; }
 
     boolean isFadeRunning() { return fadeTimer.isRunning(); }
+
+    float getHintCardAlpha() { return hintCardAlpha; }
+
+    boolean isHintCardVisible() { return hintCardImage != null && hintCardAlpha > 0.0f; }
 
     // --- Package-private methods ---
 
@@ -134,6 +165,16 @@ public class ScenePanel extends JPanel {
             // Layer 2 — hotspot overlays (always full opacity)
             for (Hotspot hotspot : hotspots) {
                 paintHotspot(g2, hotspot);
+            }
+
+            // Layer 3 — hint card overlay (fades out after hold period)
+            if (hintCardImage != null && hintCardAlpha > 0.0f) {
+                int cw = 320, ch = 200;
+                int cx = (getWidth() - cw) / 2;
+                int cy = (getHeight() - ch) / 2;
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, hintCardAlpha));
+                g2.drawImage(hintCardImage, cx, cy, cw, ch, this);
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
             }
         } finally {
             g2.dispose();

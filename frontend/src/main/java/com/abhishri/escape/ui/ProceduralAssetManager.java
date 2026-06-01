@@ -3,6 +3,7 @@ package com.abhishri.escape.ui;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -297,6 +298,163 @@ public class ProceduralAssetManager implements AssetManager {
         g2.setStroke(new BasicStroke(2f));
         g2.drawOval(22, 22, 20, 20);
         g2.setStroke(new BasicStroke(1f));
+    }
+
+    // -------------------------------------------------------------------------
+    // Hint cards
+    // -------------------------------------------------------------------------
+
+    @Override
+    public Image getHintCard(String objectId) {
+        return switch (objectId) {
+            case "wall_clock"      -> paintWallClockCard();
+            case "reception_desk"  -> paintReceptionDeskCard();
+            case "reading_lamp"    -> paintReadingLampCard();
+            case "filing_cabinets" -> paintFilingCabinetsCard();
+            default -> new BufferedImage(320, 200, BufferedImage.TYPE_INT_ARGB);
+        };
+    }
+
+    private BufferedImage paintWallClockCard() {
+        BufferedImage img = new BufferedImage(320, 200, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        g2.setColor(ThemeConstants.DARK_WOOD);
+        g2.fillRect(0, 0, 320, 200);
+        g2.setColor(ThemeConstants.AGED_BRASS);
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRect(1, 1, 318, 198);
+
+        // Clock face circle (center 160,95 radius 70)
+        g2.setStroke(new BasicStroke(2f));
+        g2.drawOval(90, 25, 140, 140);
+
+        // 12 tick marks (clockwise from 12 o'clock)
+        g2.setColor(ThemeConstants.CANDLE_TEXT);
+        g2.setStroke(new BasicStroke(1.5f));
+        for (int i = 0; i < 12; i++) {
+            double a = i * 30.0 * Math.PI / 180.0;
+            double dx = Math.sin(a);
+            double dy = -Math.cos(a);
+            g2.drawLine((int)(160 + 70 * dx), (int)(95 + 70 * dy),
+                        (int)(160 + 62 * dx), (int)(95 + 62 * dy));
+        }
+
+        // Two blurred hand smears at arbitrary angles (deliberately unreadable)
+        g2.setColor(ThemeConstants.DIM_TEXT);
+        g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        double a1 = 315.0 * Math.PI / 180.0;
+        g2.drawLine(160, 95, (int)(160 + 40 * Math.sin(a1)), (int)(95 - 40 * Math.cos(a1)));
+        double a2 = 90.0 * Math.PI / 180.0;
+        g2.drawLine(160, 95, (int)(160 + 55 * Math.sin(a2)), (int)(95 - 55 * Math.cos(a2)));
+        g2.setStroke(new BasicStroke(1f));
+
+        // Format label
+        g2.setFont(ThemeConstants.FONT_SMALL);
+        g2.setColor(ThemeConstants.BRASS_GLOW);
+        FontMetrics fm = g2.getFontMetrics();
+        String label = "H H : M M";
+        g2.drawString(label, (320 - fm.stringWidth(label)) / 2, 180);
+
+        g2.dispose();
+        return img;
+    }
+
+    private BufferedImage paintReceptionDeskCard() {
+        BufferedImage img = new BufferedImage(320, 200, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        g2.setColor(ThemeConstants.DARK_WOOD);
+        g2.fillRect(0, 0, 320, 200);
+        g2.setColor(ThemeConstants.AGED_BRASS);
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRect(1, 1, 318, 198);
+
+        // Doorframe pillars and arch
+        Color frameColor = new Color(0x1A, 0x0F, 0x04);
+        g2.setColor(frameColor);
+        g2.fillRect(96, 30, 10, 150);
+        g2.fillRect(214, 30, 10, 150);
+        g2.setStroke(new BasicStroke(10f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+        g2.draw(new Arc2D.Float(85, -10, 150, 150, 37, 106, Arc2D.OPEN));
+        g2.setStroke(new BasicStroke(1f));
+
+        // 3 brass nail circles
+        g2.setColor(ThemeConstants.AGED_BRASS);
+        g2.fillOval(126, 66, 8, 8);
+        g2.fillOval(154, 56, 8, 8);
+        g2.fillOval(184, 64, 8, 8);
+
+        g2.dispose();
+        return img;
+    }
+
+    private BufferedImage paintReadingLampCard() {
+        BufferedImage img = new BufferedImage(320, 200, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        g2.setColor(ThemeConstants.DARK_WOOD);
+        g2.fillRect(0, 0, 320, 200);
+        g2.setColor(ThemeConstants.AGED_BRASS);
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRect(1, 1, 318, 198);
+
+        // 8 book spines, bottom-aligned, varying heights
+        Color spineColor = new Color(0x1A, 0x0F, 0x04);
+        int[] heights = {78, 82, 76, 80, 77, 83, 79, 81};
+        int spineW = 22, spineGap = 3, startX = 28, baseY = 145;
+        for (int i = 0; i < 8; i++) {
+            int x = startX + i * (spineW + spineGap);
+            int h = heights[i];
+            int y = baseY - h;
+            g2.setColor(spineColor);
+            g2.fillRect(x, y, spineW, h);
+            g2.setColor(ThemeConstants.DIM_TEXT);
+            g2.drawLine(x, y, x + spineW - 1, y);
+        }
+
+        g2.dispose();
+        return img;
+    }
+
+    private BufferedImage paintFilingCabinetsCard() {
+        BufferedImage img = new BufferedImage(320, 200, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        g2.setColor(ThemeConstants.DARK_WOOD);
+        g2.fillRect(0, 0, 320, 200);
+        g2.setColor(ThemeConstants.AGED_BRASS);
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRect(1, 1, 318, 198);
+
+        // 4 cabinet faces with drawer dividers and handles
+        Color cabinetColor = new Color(0x1A, 0x0F, 0x04);
+        Color drawerColor  = new Color(0x28, 0x18, 0x08);
+        int cabW = 56, cabH = 100, cabGap = 6, startX = 18, startY = 50;
+        for (int i = 0; i < 4; i++) {
+            int x = startX + i * (cabW + cabGap);
+            g2.setColor(cabinetColor);
+            g2.fillRect(x, startY, cabW, cabH);
+            // 3 dividers → 4 drawer sections
+            g2.setColor(drawerColor);
+            for (int d = 1; d <= 3; d++) {
+                g2.fillRect(x, startY + d * 25, cabW, 2);
+            }
+            // Drawer handles
+            g2.setColor(ThemeConstants.AGED_BRASS);
+            for (int d = 0; d < 4; d++) {
+                int hx = x + (cabW - 18) / 2;
+                int hy = startY + d * 25 + 10;
+                g2.fillRect(hx, hy, 18, 4);
+            }
+        }
+
+        g2.dispose();
+        return img;
     }
 
     // -------------------------------------------------------------------------
