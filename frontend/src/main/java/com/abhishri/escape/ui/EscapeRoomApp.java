@@ -18,7 +18,7 @@ public class EscapeRoomApp {
         GameApiClient client = new GameApiClient(BASE_URL, mapper);
 
         SwingUtilities.invokeLater(() -> {
-            MainFrame frame = new MainFrame(new PlaceholderAssetManager(), client);
+            MainFrame frame = new MainFrame(new FileAssetManager(), client);
             frame.setVisible(true);
         });
     }

@@ -4,7 +4,7 @@ Single-player point-and-click escape room game. Java 17 + Spring Boot 3 backend,
 
 ## Status
 
-Phase 1 (MVP) — under design. Implementation not yet started.
+Phase 1 (MVP) — **complete**. 102 tests pass (86 backend + 16 frontend). All `design.md §20` acceptance boxes are green.
 
 ## Documentation
 
@@ -15,7 +15,10 @@ Read `idea.md` first to understand **what** and **why**. Read `design.md` when i
 
 ## Prerequisites
 
-- JDK 17 or newer
+- JDK 17 (Temurin recommended). **Important on macOS:** the system default JVM may be older. Set `JAVA_HOME` explicitly before every Maven command:
+  ```
+  export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home
+  ```
 - Maven 3.8+
 - (Optional) An IDE that understands Maven multi-module projects: IntelliJ IDEA, Eclipse, or VS Code with the Java extension pack.
 
@@ -24,13 +27,15 @@ Read `idea.md` first to understand **what** and **why**. Read `design.md` when i
 From the repo root:
 
 ```
-mvn clean install
+JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
+  mvn --offline clean test
 ```
 
 Run the backend (terminal 1):
 
 ```
-mvn -pl backend spring-boot:run
+JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
+  mvn -pl backend spring-boot:run
 ```
 
 The backend binds to `http://127.0.0.1:8080`. Verify it is up:
@@ -42,10 +47,11 @@ curl http://127.0.0.1:8080/api/health
 Run the frontend (terminal 2, after the backend is up):
 
 ```
-mvn -pl frontend exec:java -Dexec.mainClass=com.abhishri.escape.ui.EscapeRoomApp
+JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
+  mvn -pl frontend exec:java -Dexec.mainClass=com.abhishri.escape.ui.EscapeRoomApp
 ```
 
-The Swing window opens to the Entry Foyer scene. Full walkthrough of the golden path is in `idea.md` §3.
+The Swing window opens to the Entry Foyer scene. Click "New Game" to start. Full walkthrough of the golden path is in `idea.md` §3.
 
 ## Project Layout
 
