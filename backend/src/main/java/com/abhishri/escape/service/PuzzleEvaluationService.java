@@ -1,11 +1,14 @@
 package com.abhishri.escape.service;
 
 import com.abhishri.escape.domain.GameSession;
+import com.abhishri.escape.domain.puzzle.ItemUsePuzzle;
 import com.abhishri.escape.domain.puzzle.Puzzle;
 import com.abhishri.escape.dto.AttemptPuzzleRequest;
 import com.abhishri.escape.dto.GameStateDTO;
 import com.abhishri.escape.dto.LastActionResult;
+import com.abhishri.escape.dto.UseItemRequest;
 import com.abhishri.escape.exception.GameNotFoundException;
+import com.abhishri.escape.exception.ItemNotInInventoryException;
 import com.abhishri.escape.exception.PrerequisiteNotMetException;
 import com.abhishri.escape.exception.PuzzleNotFoundException;
 import com.abhishri.escape.repository.GameSessionRepository;
@@ -67,5 +70,40 @@ public class PuzzleEvaluationService {
         } else {
             return gameSessionService.buildStateDTO(session, "That's not right. Try again.", LastActionResult.PUZZLE_FAILED);
         }
+    }
+
+    @Transactional
+    public GameStateDTO useItem(UUID gameId, UseItemRequest req) {
+        GameSession session = gameSessionRepository.findById(gameId)
+                .orElseThrow(() -> new GameNotFoundException(gameId));
+
+        if (!inventoryService.hasItem(session, req.getItemId())) {
+            throw new ItemNotInInventoryException(req.getItemId());
+        }
+
+        // Find the ItemUsePuzzle in the current room matching (requiredItemId, targetObjectId)
+        ItemUsePuzzle puzzle = puzzleRepository.findByRoomId(session.getCurrentRoomId()).stream()
+                .filter(p -> p instanceof ItemUsePuzzle)
+                .map(p -> (ItemUsePuzzle) p)
+                .filter(p -> p.getRequiredItemId().equals(req.getItemId()) &&
+                             p.getTargetObjectId().equals(req.getTargetObjectId()))
+                .findFirst()
+                .orElseThrow(() -> new PuzzleNotFoundException(req.getItemId() + "+" + req.getTargetObjectId()));
+
+        if (!session.getSolvedPuzzleIds().containsAll(puzzle.getPrerequisitePuzzleIds())) {
+            throw new PrerequisiteNotMetException(puzzle.getId());
+        }
+
+        if (!session.getSolvedPuzzleIds().contains(puzzle.getId())) {
+            session.getSolvedPuzzleIds().add(puzzle.getId());
+            if (puzzle.getRewardItemId() != null) {
+                inventoryService.addItem(session, puzzle.getRewardItemId());
+            }
+            session.setLastUpdatedAt(LocalDateTime.now());
+            gameSessionRepository.save(session);
+            log.info("ItemUsePuzzle solved game={} puzzle={}", gameId, puzzle.getId());
+        }
+
+        return gameSessionService.buildStateDTO(session, puzzle.getDescription(), LastActionResult.PUZZLE_SOLVED);
     }
 }

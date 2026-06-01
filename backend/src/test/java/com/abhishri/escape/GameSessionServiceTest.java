@@ -9,6 +9,7 @@ import com.abhishri.escape.domain.RoomObject;
 import com.abhishri.escape.dto.GameStateDTO;
 import com.abhishri.escape.dto.LastActionResult;
 import com.abhishri.escape.repository.GameSessionRepository;
+import com.abhishri.escape.repository.PuzzleRepository;
 import com.abhishri.escape.repository.RoomRepository;
 import com.abhishri.escape.service.GameSessionService;
 import com.abhishri.escape.service.InventoryService;
@@ -34,16 +35,19 @@ class GameSessionServiceTest {
     @Mock private GameSessionRepository gameSessionRepository;
     @Mock private RoomRepository roomRepository;
     @Mock private InventoryService inventoryService;
+    @Mock private PuzzleRepository puzzleRepository;
 
     private GameSessionService service;
 
     @BeforeEach
     void setUp() {
+        when(puzzleRepository.findAll()).thenReturn(List.of());
         service = new GameSessionService(
             "room_foyer",
             gameSessionRepository,
             roomRepository,
-            inventoryService);
+            inventoryService,
+            puzzleRepository);
 
         RoomObject clock = new RoomObject();
         clock.setId("wall_clock");

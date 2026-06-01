@@ -5,6 +5,7 @@ import com.abhishri.escape.dto.ExamineRequest;
 import com.abhishri.escape.dto.GameStateDTO;
 import com.abhishri.escape.dto.MoveRequest;
 import com.abhishri.escape.dto.PickupRequest;
+import com.abhishri.escape.dto.UseItemRequest;
 import com.abhishri.escape.service.GameSessionService;
 import com.abhishri.escape.service.PuzzleEvaluationService;
 import jakarta.validation.Valid;
@@ -69,5 +70,12 @@ public class GameController {
             @PathVariable("gameId") UUID gameId,
             @Valid @RequestBody AttemptPuzzleRequest req) {
         return ResponseEntity.ok(puzzleEvaluationService.attempt(gameId, req));
+    }
+
+    @PostMapping("/{gameId}/use-item")
+    public ResponseEntity<GameStateDTO> useItem(
+            @PathVariable("gameId") UUID gameId,
+            @Valid @RequestBody UseItemRequest req) {
+        return ResponseEntity.ok(puzzleEvaluationService.useItem(gameId, req));
     }
 }

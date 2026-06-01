@@ -51,6 +51,14 @@ public class GlobalExceptionHandler {
                 .body(error(HttpStatus.CONFLICT, ex.getMessage(), req, ApiErrorCode.PREREQUISITE_NOT_MET));
     }
 
+    @ExceptionHandler(ItemNotInInventoryException.class)
+    public ResponseEntity<ErrorResponseDTO> handleItemNotInInventory(
+            ItemNotInInventoryException ex, HttpServletRequest req) {
+        log.warn("409 ITEM_NOT_IN_INVENTORY path={}", req.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(error(HttpStatus.CONFLICT, ex.getMessage(), req, ApiErrorCode.ITEM_NOT_IN_INVENTORY));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDTO> handleValidation(
             MethodArgumentNotValidException ex, HttpServletRequest req) {

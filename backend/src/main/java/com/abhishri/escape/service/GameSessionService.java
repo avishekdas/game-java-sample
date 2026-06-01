@@ -13,9 +13,11 @@ import com.abhishri.escape.dto.MoveRequest;
 import com.abhishri.escape.dto.PickupRequest;
 import com.abhishri.escape.dto.RoomDTO;
 import com.abhishri.escape.dto.RoomObjectDTO;
+import com.abhishri.escape.domain.puzzle.Puzzle;
 import com.abhishri.escape.exception.GameNotFoundException;
 import com.abhishri.escape.exception.InvalidMoveException;
 import com.abhishri.escape.repository.GameSessionRepository;
+import com.abhishri.escape.repository.PuzzleRepository;
 import com.abhishri.escape.repository.RoomRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,16 +39,19 @@ public class GameSessionService {
     private final GameSessionRepository gameSessionRepository;
     private final RoomRepository roomRepository;
     private final InventoryService inventoryService;
+    private final PuzzleRepository puzzleRepository;
 
     public GameSessionService(
             @Value("${escape.world.starting-room}") String startingRoomId,
             GameSessionRepository gameSessionRepository,
             RoomRepository roomRepository,
-            InventoryService inventoryService) {
+            InventoryService inventoryService,
+            PuzzleRepository puzzleRepository) {
         this.startingRoomId = startingRoomId;
         this.gameSessionRepository = gameSessionRepository;
         this.roomRepository = roomRepository;
         this.inventoryService = inventoryService;
+        this.puzzleRepository = puzzleRepository;
     }
 
     @Transactional
@@ -137,7 +142,7 @@ public class GameSessionService {
         return buildStateDTO(session, "You pick up " + obj.getLabel() + ".", LastActionResult.PICKUP_OK);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public GameStateDTO getState(UUID id) {
         GameSession session = gameSessionRepository.findById(id)
                 .orElseThrow(() -> new GameNotFoundException(id));
@@ -145,6 +150,18 @@ public class GameSessionService {
     }
 
     public GameStateDTO buildStateDTO(GameSession session, String message, LastActionResult result) {
+        // Win condition: Conditionals rubric — flip status to COMPLETE when all puzzles solved
+        if (session.getStatus() == GameStatus.IN_PROGRESS) {
+            List<String> allPuzzleIds = puzzleRepository.findAll().stream()
+                    .map(Puzzle::getId)
+                    .toList();
+            if (!allPuzzleIds.isEmpty() && session.getSolvedPuzzleIds().containsAll(allPuzzleIds)) {
+                session.setStatus(GameStatus.COMPLETE);
+                gameSessionRepository.save(session);
+                log.info("Win condition met for game={}", session.getId());
+            }
+        }
+
         Room room = roomRepository.findById(session.getCurrentRoomId())
                 .orElseThrow(() -> new IllegalStateException(
                     "Room not found: " + session.getCurrentRoomId()));

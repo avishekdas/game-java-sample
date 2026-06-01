@@ -9,6 +9,7 @@ import com.abhishri.escape.dto.LastActionResult;
 import com.abhishri.escape.dto.MoveRequest;
 import com.abhishri.escape.exception.InvalidMoveException;
 import com.abhishri.escape.repository.GameSessionRepository;
+import com.abhishri.escape.repository.PuzzleRepository;
 import com.abhishri.escape.repository.RoomRepository;
 import com.abhishri.escape.service.GameSessionService;
 import com.abhishri.escape.service.InventoryService;
@@ -35,6 +36,7 @@ class MoveValidationTest {
     @Mock private GameSessionRepository gameSessionRepository;
     @Mock private RoomRepository roomRepository;
     @Mock private InventoryService inventoryService;
+    @Mock private PuzzleRepository puzzleRepository;
 
     private GameSessionService service;
     private Room roomA;
@@ -42,7 +44,7 @@ class MoveValidationTest {
 
     @BeforeEach
     void setUp() {
-        service = new GameSessionService("room_a", gameSessionRepository, roomRepository, inventoryService);
+        service = new GameSessionService("room_a", gameSessionRepository, roomRepository, inventoryService, puzzleRepository);
 
         roomA = new Room();
         roomA.setId("room_a");
@@ -72,6 +74,7 @@ class MoveValidationTest {
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(roomRepository.findById("room_b")).thenReturn(Optional.of(roomB));
         when(inventoryService.snapshot(any())).thenReturn(List.of());
+        when(puzzleRepository.findAll()).thenReturn(List.of());
 
         MoveRequest req = new MoveRequest();
         req.setTargetRoomId("room_b");

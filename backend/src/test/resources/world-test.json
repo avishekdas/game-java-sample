@@ -9,7 +9,7 @@
         {"id": "test_object", "label": "Test Object", "objectType": "SCENERY", "puzzleId": null, "pickupItemId": null, "interactable": true},
         {"id": "floor_coin", "label": "Coin on Floor", "objectType": "ITEM", "puzzleId": null, "pickupItemId": "test_pickup_item", "interactable": true}
       ],
-      "puzzleIds": ["test_puzzle", "test_combo_puzzle", "test_prereq_puzzle"]
+      "puzzleIds": ["test_puzzle", "test_combo_puzzle", "test_prereq_puzzle", "test_seq_puzzle", "test_item_use_puzzle"]
     },
     {
       "id": "test_room_2",
@@ -82,6 +82,27 @@
       "questionText": "Maybe or maybe not?",
       "expectedAnswer": "maybe",
       "caseSensitive": false
+    },
+    {
+      "type": "SEQUENCE",
+      "id": "test_seq_puzzle",
+      "roomId": "test_room",
+      "description": "A test sequence puzzle.",
+      "rewardItemId": null,
+      "prerequisitePuzzleIds": [],
+      "expectedSequence": ["a", "b", "c"],
+      "availableItems": ["a", "b", "c"]
+    },
+    {
+      "type": "ITEM_USE",
+      "id": "test_item_use_puzzle",
+      "roomId": "test_room",
+      "description": "A test item-use puzzle.",
+      "rewardItemId": null,
+      "prerequisitePuzzleIds": [],
+      "requiredItemId": "test_combo_reward",
+      "targetObjectId": "some_target",
+      "outcomeMessage": "The item fits perfectly."
     }
   ]
 }
