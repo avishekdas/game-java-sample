@@ -70,6 +70,14 @@ public class GlobalExceptionHandler {
                 .body(error(HttpStatus.BAD_REQUEST, msg, req, ApiErrorCode.INVALID_REQUEST));
     }
 
+    @ExceptionHandler(SaveLoadException.class)
+    public ResponseEntity<ErrorResponseDTO> handleSaveLoad(
+            SaveLoadException ex, HttpServletRequest req) {
+        log.error("500 {} path={}", ex.getErrorCode(), req.getRequestURI(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(error(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req, ex.getErrorCode()));
+    }
+
     @ExceptionHandler(Throwable.class)
     public ResponseEntity<ErrorResponseDTO> handleEverythingElse(
             Throwable ex, HttpServletRequest req) {

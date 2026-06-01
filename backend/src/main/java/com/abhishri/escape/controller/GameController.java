@@ -3,11 +3,15 @@ package com.abhishri.escape.controller;
 import com.abhishri.escape.dto.AttemptPuzzleRequest;
 import com.abhishri.escape.dto.ExamineRequest;
 import com.abhishri.escape.dto.GameStateDTO;
+import com.abhishri.escape.dto.LoadRequest;
 import com.abhishri.escape.dto.MoveRequest;
 import com.abhishri.escape.dto.PickupRequest;
+import com.abhishri.escape.dto.SaveConfirmationDTO;
+import com.abhishri.escape.dto.SaveMetadataDTO;
 import com.abhishri.escape.dto.UseItemRequest;
 import com.abhishri.escape.service.GameSessionService;
 import com.abhishri.escape.service.PuzzleEvaluationService;
+import com.abhishri.escape.service.SaveLoadService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 import java.util.UUID;
 
 @RestController
@@ -26,11 +32,14 @@ public class GameController {
 
     private final GameSessionService gameSessionService;
     private final PuzzleEvaluationService puzzleEvaluationService;
+    private final SaveLoadService saveLoadService;
 
     public GameController(GameSessionService gameSessionService,
-                          PuzzleEvaluationService puzzleEvaluationService) {
+                          PuzzleEvaluationService puzzleEvaluationService,
+                          SaveLoadService saveLoadService) {
         this.gameSessionService = gameSessionService;
         this.puzzleEvaluationService = puzzleEvaluationService;
+        this.saveLoadService = saveLoadService;
     }
 
     @PostMapping("/new")
@@ -77,5 +86,24 @@ public class GameController {
             @PathVariable("gameId") UUID gameId,
             @Valid @RequestBody UseItemRequest req) {
         return ResponseEntity.ok(puzzleEvaluationService.useItem(gameId, req));
+    }
+
+    @PostMapping("/{gameId}/save")
+    public ResponseEntity<SaveConfirmationDTO> saveGame(
+            @PathVariable("gameId") UUID gameId) {
+        return ResponseEntity.ok(saveLoadService.save(gameId));
+    }
+
+    @PostMapping("/{gameId}/load")
+    public ResponseEntity<GameStateDTO> loadGame(
+            @PathVariable("gameId") UUID gameId,
+            @Valid @RequestBody LoadRequest req) {
+        return ResponseEntity.ok(saveLoadService.load(gameId, req.getFilename()));
+    }
+
+    @GetMapping("/{gameId}/saves")
+    public ResponseEntity<List<SaveMetadataDTO>> listSaves(
+            @PathVariable("gameId") UUID gameId) {
+        return ResponseEntity.ok(saveLoadService.listSaves(gameId));
     }
 }
