@@ -99,10 +99,11 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
 | M9 — Save / Load | ✅ DONE | `SaveLoadService`, File I/O rubric, 86 backend tests |
 | M10 — Swing Skeleton | ✅ DONE | `EscapeRoomApp`, `MainFrame` (4 panels), `ScenePanel`, `AssetManager`, 88 total tests |
 | M11 — GameApiClient + Hotspot Clicks | ✅ DONE | All HTTP methods, `MouseListener`, `applyState`, 94 total tests |
-| **M12 — Puzzle Dialogs** | ⬅ **NEXT** | `PuzzleDialog` subclasses (Combination, Riddle, Sequence, ItemUse) |
-| M13–M14 — Swing Frontend | pending | M13: north-star end-to-end clicks ★; M14: polish |
+| M12 — Puzzle Dialogs + Win Screen | ✅ DONE | `PuzzleDialog` → 3 subclasses, win dialog, item-use shortcut, `puzzleType` on DTO, 98 total tests |
+| **M13 — Save/Load UI + Phase 1 Acceptance** | ⬅ **NEXT** | Save/Load/New buttons fully wired, `design.md §20` acceptance checklist |
+| M14 | pending | Polish |
 
-**Test count as of M11:** 86 backend tests, 8 frontend tests. All green.
+**Test count as of M12:** 86 backend tests, 12 frontend tests. All green.
 
 ---
 
@@ -184,7 +185,25 @@ frontend/src/main/java/com/abhishri/escape/ui/
 
 ---
 
-## 7. What M12 Must Build
+## 7. What M13 Must Build
+
+**Goal (= plan.md M14):** `design.md §20` acceptance checklist fully green. Save/Load/New buttons wired in status bar. Full golden path completable via clicks. Phase 1 shipped.
+
+**Note:** Save/Load/New buttons are already partially wired in `MainFrame` (from M11). The main remaining work is ensuring the full §20 checklist passes and doing a manual golden-path demo walkthrough.
+
+**Acceptance checklist (from design.md §20):**
+- [ ] Spring Boot starts, H2 file DB created, world seeded
+- [ ] `GET /api/health` → `{"status":"ok"}`
+- [ ] `POST /api/game/new` returns `GameStateDTO` with foyer room
+- [ ] Move, examine, pickup all work via curl
+- [ ] All 4 puzzle types solvable; win condition triggers
+- [ ] Save creates `./saves/*.json`; load restores state on restart
+- [ ] **Full golden path completable from clicks only** (Swing UI)
+- [ ] AP CS rubric matrix (`idea.md §9`) fully covered
+
+---
+
+## (Previous M12 — now complete)
 
 **Goal:** Clicking a hotspot whose `type == "PUZZLE"` opens a modal dialog matching the puzzle type. Solving or failing the puzzle dispatches `attemptPuzzle` or `useItem` and applies the returned state.
 
@@ -240,7 +259,7 @@ frontend/src/main/java/com/abhishri/escape/ui/
 ```
 git remote: git@github.com:avishekdas/game-java-sample.git
 branch: main
-last commit: feat(M11): GameApiClient HTTP methods, ScenePanel MouseListener, MainFrame.applyState
+last commit: feat(M12): PuzzleDialog subclasses, win screen, inventory item-use shortcut
 ```
 
 ---
