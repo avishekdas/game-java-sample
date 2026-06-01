@@ -98,10 +98,11 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
 | M8 — Sequence + ItemUse + Win ★ | ✅ DONE | `POST /use-item`, win condition, 75 backend tests |
 | M9 — Save / Load | ✅ DONE | `SaveLoadService`, File I/O rubric, 86 backend tests |
 | M10 — Swing Skeleton | ✅ DONE | `EscapeRoomApp`, `MainFrame` (4 panels), `ScenePanel`, `AssetManager`, 88 total tests |
-| **M11 — Swing Frontend: Scene + Inventory** | ⬅ **NEXT** | `GameApiClient` methods, ScenePanel hotspot clicks, InventoryPanel wired |
-| M12–M14 — Swing Frontend | pending | M12: puzzle dialogs; M13: north-star clicks ★; M14: polish |
+| M11 — GameApiClient + Hotspot Clicks | ✅ DONE | All HTTP methods, `MouseListener`, `applyState`, 94 total tests |
+| **M12 — Puzzle Dialogs** | ⬅ **NEXT** | `PuzzleDialog` subclasses (Combination, Riddle, Sequence, ItemUse) |
+| M13–M14 — Swing Frontend | pending | M13: north-star end-to-end clicks ★; M14: polish |
 
-**Test count as of M10:** 86 backend tests, 2 frontend tests. All green.
+**Test count as of M11:** 86 backend tests, 8 frontend tests. All green.
 
 ---
 
@@ -183,41 +184,34 @@ frontend/src/main/java/com/abhishri/escape/ui/
 
 ---
 
-## 7. What M11 Must Build
+## 7. What M12 Must Build
 
-**Goal:** Wire `GameApiClient` to backend. `ScenePanel` hotspots are clickable and dispatch actions to the backend. `InventoryPanel` and `DialoguePanel` update from the returned `GameStateDTO`. `StatusBar` Save/Load/New buttons get listeners.
+**Goal:** Clicking a hotspot whose `type == "PUZZLE"` opens a modal dialog matching the puzzle type. Solving or failing the puzzle dispatches `attemptPuzzle` or `useItem` and applies the returned state.
 
 **Red tests first:**
 
-- `GameApiClientTest` — unit tests using a mock `HttpClient` (or real HTTP against `@SpringBootTest`):
-  - `newGame_returnsGameStateDTO()`
-  - `getState_returnsCurrentState()`
-  - `move_returnsUpdatedState()`
-- `ScenePanelInteractionTest` — with `MouseListener` hooked up, clicking within a hotspot's bounds fires the correct action on a mocked `GameApiClient`
+- `CombinationPuzzleDialogTest` — constructs dialog with a stub `GameApiClient`, types "123" in the code field, clicks OK → `attemptPuzzle` is called with `{"code":"123"}`
+- `RiddlePuzzleDialogTest` — same shape for the riddle answer field
+- `PuzzleDialogFactoryTest` — `PuzzleDialogFactory.forObject(roomObjectDTO, client, gameId)` returns the correct subclass based on `objectType`
 
 **Green:**
 
-- `GameApiClient` methods (all synchronous `HttpClient.send()` on EDT per Phase 1 contract):
-  - `GameStateDTO newGame()`
-  - `GameStateDTO getState(UUID gameId)`
-  - `GameStateDTO move(UUID gameId, String targetRoomId)`
-  - `GameStateDTO examine(UUID gameId, String objectId)`
-  - `GameStateDTO pickup(UUID gameId, String objectId)`
-  - `GameStateDTO attemptPuzzle(UUID gameId, String puzzleId, Map<String,String> inputs)`
-  - `GameStateDTO useItem(UUID gameId, String itemId, String targetObjectId)`
-  - `GameStateDTO saveGame(UUID gameId)`
-  - `GameStateDTO loadGame(UUID gameId, String filename)`
-- `ScenePanel` — `MouseListener` maps click coordinates to hotspot, calls back to `MainFrame`
-- `MainFrame` — wires `GameApiClient` through; `applyState(GameStateDTO)` updates all panels
-- `StatusBar` — Save/Load/New buttons get listeners
+- `PuzzleDialog` (abstract `JDialog`) — `puzzleId`, OK/Cancel buttons, abstract `buildInputPanel()`, `collectInputs() → Map<String,String>`
+- `CombinationPuzzleDialog extends PuzzleDialog` — single `JTextField` for code, `collectInputs` returns `{"code": value}`
+- `RiddlePuzzleDialog extends PuzzleDialog` — single `JTextField` for answer, `collectInputs` returns `{"answer": value}`
+- `SequencePuzzleDialog extends PuzzleDialog` — ordered list of inputs (e.g. 3 JTextFields), `collectInputs` returns `{"step0":..., "step1":..., "step2":...}` or `{"sequence":"a,b,c"}`
+- `ItemUsePuzzleDialog` — not a dialog; handled by `handleHotspotClick` dispatching `client.useItem()` directly (item selected from inventory, no modal needed)
+- `PuzzleDialogFactory` — static factory: checks `RoomObjectDTO.objectType` and `puzzleId` prefix, returns correct dialog subclass
+- `MainFrame.handleHotspotClick` — updated to open the dialog for PUZZLE type
 
 **Important notes:**
-- `ObjectMapper` in `GameApiClient` must register `JavaTimeModule` and disable `WRITE_DATES_AS_TIMESTAMPS`.
-- `GameApiClient` constructor takes `String baseUrl` and `ObjectMapper` — default URL is `http://127.0.0.1:8080/api/game`.
-- Backend must be running for integration: `JAVA_HOME=... mvn -pl backend spring-boot:run`.
-- No `SwingWorker` — synchronous calls only (Phase 1 scope).
+- `PuzzleDialog` extends `JDialog`, constructed with `this` (MainFrame) as owner → modal by default.
+- `PuzzleDialog` subclasses are the canonical **Inheritance** rubric demo on the frontend side.
+- Backend `AttemptPuzzleRequest` expects `{ "puzzleId": "...", "inputs": { ... } }` — the dialog fills `inputs`.
+- For `SEQUENCE` puzzles, backend expects `inputs.sequence` as a comma-separated string matching `expectedSequence` order — check `design.md §6` for exact contract.
+- `ItemUsePuzzle` in the backend is triggered via `POST /use-item` with `{ "itemId": "...", "targetObjectId": "..." }`. Hotspot click with type `PUZZLE` + an item already in inventory should dispatch `useItem`. The dialog may be skipped if the required item is already held; show a selector if multiple items are held.
 
-**Rubric:** GUI concept — `MouseListener` on `ScenePanel` is a required GUI rubric demonstration.
+**Rubric:** Inheritance — `PuzzleDialog` → 3+ concrete subclasses = AP CS Inheritance demonstration on the GUI side.
 
 ---
 
@@ -246,7 +240,7 @@ frontend/src/main/java/com/abhishri/escape/ui/
 ```
 git remote: git@github.com:avishekdas/game-java-sample.git
 branch: main
-last commit: feat(M10): Swing frontend skeleton — MainFrame, ScenePanel, AssetManager, GUI rubric
+last commit: feat(M11): GameApiClient HTTP methods, ScenePanel MouseListener, MainFrame.applyState
 ```
 
 ---

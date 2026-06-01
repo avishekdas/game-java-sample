@@ -5,8 +5,11 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import javax.swing.JPanel;
 
 public class ScenePanel extends JPanel {
@@ -17,10 +20,20 @@ public class ScenePanel extends JPanel {
     private final AssetManager assetManager;
     private List<Hotspot> hotspots = new ArrayList<>();
     private String currentRoomId = "foyer";
+    private Consumer<Hotspot> hotspotClickListener;
 
     public ScenePanel(AssetManager assetManager) {
         this.assetManager = assetManager;
         setPreferredSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                Hotspot h = findHotspotAt(e.getX(), e.getY());
+                if (h != null && hotspotClickListener != null) {
+                    hotspotClickListener.accept(h);
+                }
+            }
+        });
     }
 
     public void setHotspots(List<Hotspot> hotspots) {
@@ -31,6 +44,19 @@ public class ScenePanel extends JPanel {
     public void setCurrentRoomId(String roomId) {
         this.currentRoomId = roomId;
         repaint();
+    }
+
+    public void setHotspotClickListener(Consumer<Hotspot> listener) {
+        this.hotspotClickListener = listener;
+    }
+
+    Hotspot findHotspotAt(int x, int y) {
+        for (Hotspot h : hotspots) {
+            if (h.getBounds().contains(x, y)) {
+                return h;
+            }
+        }
+        return null;
     }
 
     @Override
