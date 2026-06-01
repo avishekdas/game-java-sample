@@ -7,7 +7,7 @@
       "connectedRoomIds": ["room_reading_hall"],
       "objects": [
         {"id": "wall_clock",      "label": "Wall Clock",      "objectType": "PUZZLE",  "puzzleId": "puzzle_clock",  "pickupItemId": null, "interactable": true},
-        {"id": "reception_desk",  "label": "Reception Desk",  "objectType": "ITEM",    "puzzleId": null,            "pickupItemId": "desk_key", "interactable": true},
+        {"id": "reception_desk",  "label": "Reception Desk",  "objectType": "SCENERY", "puzzleId": null,            "pickupItemId": null, "interactable": true},
         {"id": "welcome_mat",     "label": "Welcome Mat",     "objectType": "SCENERY", "puzzleId": null,            "pickupItemId": null, "interactable": true},
         {"id": "umbrella_stand",  "label": "Umbrella Stand",  "objectType": "SCENERY", "puzzleId": null,            "pickupItemId": null, "interactable": true},
         {"id": "front_door",      "label": "Front Door",      "objectType": "SCENERY", "puzzleId": null,            "pickupItemId": null, "interactable": false}

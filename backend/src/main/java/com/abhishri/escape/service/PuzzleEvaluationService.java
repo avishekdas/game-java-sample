@@ -104,6 +104,7 @@ public class PuzzleEvaluationService {
             log.info("ItemUsePuzzle solved game={} puzzle={}", gameId, puzzle.getId());
         }
 
-        return gameSessionService.buildStateDTO(session, puzzle.getDescription(), LastActionResult.PUZZLE_SOLVED);
+        String message = puzzle.getOutcomeMessage() != null ? puzzle.getOutcomeMessage() : puzzle.getDescription();
+        return gameSessionService.buildStateDTO(session, message, LastActionResult.PUZZLE_SOLVED);
     }
 }

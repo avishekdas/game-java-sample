@@ -186,11 +186,26 @@ public class MainFrame extends JFrame {
                 applyState(client.move(gameId, hotspot.getObjectId()));
                 return;
             }
+            // ITEM hotspots always trigger pickup — never route through use-item
+            if ("ITEM".equals(hotspot.getType())) {
+                applyState(client.pickup(gameId, hotspot.getObjectId()));
+                return;
+            }
             String selectedItemId = inventoryPanel.getSelectedItemId();
             if (selectedItemId != null) {
-                applyState(client.useItem(gameId, selectedItemId, hotspot.getObjectId()));
-                inventoryPanel.clearSelection();
-                return;
+                try {
+                    applyState(client.useItem(gameId, selectedItemId, hotspot.getObjectId()));
+                    inventoryPanel.clearSelection();
+                    return;
+                } catch (RuntimeException e) {
+                    // 404 means no puzzle exists for this item+object combo — clear selection
+                    // and fall through to normal examine/puzzle dispatch
+                    if (e.getMessage() != null && e.getMessage().contains("404")) {
+                        inventoryPanel.clearSelection();
+                    } else {
+                        throw e;
+                    }
+                }
             }
             if ("PUZZLE".equals(hotspot.getType())) {
                 RoomObjectDTO obj = roomObjectsByHotspotId.get(hotspot.getObjectId());
@@ -250,26 +265,54 @@ public class MainFrame extends JFrame {
     }
 
     private List<Hotspot> buildHotspots(RoomDTO room) {
-        if (room.getObjects() == null || room.getObjects().isEmpty()) {
-            return new ArrayList<>();
-        }
         List<Hotspot> hotspots = new ArrayList<>();
         int panelW = scenePanel.getWidth();
         int panelH = scenePanel.getHeight();
         if (panelW == 0) panelW = 800;
         if (panelH == 0) panelH = 500;
 
-        int n = room.getObjects().size();
-        int spacing = panelW / (n + 1);
-        int baseY = panelH * 2 / 3;
-
-        for (int i = 0; i < n; i++) {
-            RoomObjectDTO obj = room.getObjects().get(i);
-            int x = spacing * (i + 1) - 50;
-            Rectangle bounds = new Rectangle(x, baseY - 30, 100, 60);
-            String type = obj.getObjectType() != null ? obj.getObjectType().name() : "SCENERY";
-            hotspots.add(new Hotspot(obj.getId(), type, obj.getLabel(), bounds, obj.getId()));
+        List<RoomObjectDTO> objects = room.getObjects() != null ? room.getObjects() : new ArrayList<>();
+        int n = objects.size();
+        if (n > 0) {
+            int spacing = panelW / (n + 1);
+            int baseY = panelH * 2 / 3;
+            for (int i = 0; i < n; i++) {
+                RoomObjectDTO obj = objects.get(i);
+                int x = spacing * (i + 1) - 50;
+                Rectangle bounds = new Rectangle(x, baseY - 30, 100, 60);
+                String type = obj.getObjectType() != null ? obj.getObjectType().name() : "SCENERY";
+                hotspots.add(new Hotspot(obj.getId(), type, obj.getLabel(), bounds, obj.getId()));
+            }
         }
+
+        List<String> exits = room.getExits() != null ? room.getExits() : new ArrayList<>();
+        int m = exits.size();
+        if (m > 0) {
+            int spacing = panelW / (m + 1);
+            int exitY = panelH - 55;
+            for (int i = 0; i < m; i++) {
+                String roomId = exits.get(i);
+                String label = "→ " + toRoomName(roomId);
+                int x = spacing * (i + 1) - 60;
+                Rectangle bounds = new Rectangle(x, exitY, 120, 40);
+                hotspots.add(new Hotspot(roomId, "EXIT", label, bounds, roomId));
+            }
+        }
+
         return hotspots;
+    }
+
+    private String toRoomName(String roomId) {
+        String stripped = roomId.startsWith("room_") ? roomId.substring(5) : roomId;
+        String[] parts = stripped.split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (sb.length() > 0) sb.append(" ");
+            if (!part.isEmpty()) {
+                sb.append(Character.toUpperCase(part.charAt(0)));
+                sb.append(part.substring(1));
+            }
+        }
+        return sb.toString();
     }
 }
