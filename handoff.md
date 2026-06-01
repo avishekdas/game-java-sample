@@ -95,11 +95,11 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
 | M5 — Navigation + Examination | ✅ DONE | `POST /move`, `POST /examine`, 409 on invalid; Conditionals rubric |
 | M6 — Inventory + Pickup | ✅ DONE | `POST /pickup`, `InventoryService.addItem/hasItem/removeItem`, 409 on non-pickupable/already held |
 | M7 — Puzzle Evaluation: Combo + Riddle | ✅ DONE | `PuzzleEvaluationService`, `POST /attempt-puzzle`, prereq check, idempotent reward |
-| **M8 — Sequence + ItemUse + Win ★** | ⬅ **NEXT** | North-star: full game winnable via curl |
-| M9 — Save / Load | pending | `SaveLoadService`, File I/O rubric demo |
+| M8 — Sequence + ItemUse + Win ★ | ✅ DONE | `POST /use-item`, win condition, 75 backend tests |
+| **M9 — Save / Load** | ⬅ **NEXT** | `SaveLoadService`, File I/O rubric demo |
 | M10–M14 — Swing Frontend | pending | M10: skeleton; M13: north-star clicks ★ |
 
-**Test count as of M7:** 60 backend tests, 1 frontend sanity test. All green.
+**Test count as of M8:** 75 backend tests, 1 frontend sanity test. All green.
 
 ---
 
@@ -118,8 +118,8 @@ backend/src/main/java/com/abhishri/escape/
 │   ├── HealthController.java           GET /api/health
 │   └── GameController.java             POST /new, GET /{id}, POST /{id}/move,
 │                                       POST /{id}/examine, POST /{id}/pickup,
-│                                       POST /{id}/attempt-puzzle
-│                                       [POST /{id}/use-item added in M8]
+│                                       POST /{id}/attempt-puzzle,
+│                                       POST /{id}/use-item
 ├── domain/
 │   ├── GameSession.java, GameStatus.java, PlayerInventory.java
 │   ├── Room.java, RoomObject.java (@Embeddable), ObjectType.java (enum), InventoryItem.java
@@ -134,12 +134,13 @@ backend/src/main/java/com/abhishri/escape/
 │   ├── LastActionResult.java (enum), ErrorResponseDTO.java
 │   ├── MoveRequest.java, ExamineRequest.java, PickupRequest.java
 │   ├── AttemptPuzzleRequest.java
-│   └── [UseItemRequest added in M8]
+│   ├── UseItemRequest.java
+│   └── [SaveRequest / LoadRequest added in M9]
 ├── exception/
 │   ├── ApiErrorCode.java (enum), GlobalExceptionHandler.java
 │   ├── GameNotFoundException.java, InvalidMoveException.java
 │   ├── PuzzleNotFoundException.java, PrerequisiteNotMetException.java
-│   └── [ItemNotInInventoryException added in M8]
+│   └── ItemNotInInventoryException.java
 ├── repository/
 │   └── GameSessionRepository, RoomRepository, PuzzleRepository,
 │       PlayerInventoryRepository, InventoryItemRepository
@@ -147,7 +148,7 @@ backend/src/main/java/com/abhishri/escape/
     ├── GameSessionService.java         createNewGame, getState, buildStateDTO,
     │                                   move, examine, pickup
     ├── InventoryService.java           snapshot, addItem, hasItem, removeItem
-    ├── PuzzleEvaluationService.java    attempt (M7); useItem (M8)
+    ├── PuzzleEvaluationService.java    attempt, useItem
     ├── WorldSeedService.java + WorldSeedValidator.java
     └── [SaveLoadService added in M9]
 
@@ -157,7 +158,7 @@ backend/src/main/resources/
 
 backend/src/test/resources/
 ├── application-test.properties         (in-memory H2, world-test.json, starting-room=test_room)
-├── world-test.json                     (3 rooms, 3 puzzles, 3 items — extended through M7)
+├── world-test.json                     (3 rooms, 5 puzzles, 3 items — extended through M8)
 └── world-broken.json                   (referential integrity failure fixture)
 
 frontend/  — empty stubs only (M10+)
@@ -165,64 +166,50 @@ frontend/  — empty stubs only (M10+)
 
 ---
 
-## 7. What M8 Must Build
+## 7. What M9 Must Build
 
-**North-star milestone — game fully winnable via curl after this.**
+**File I/O rubric demo — `SaveLoadService` writes and reads JSON snapshots to `./saves/`.**
 
-**Red tests first (per plan.md §M8):**
+**Red tests first (per plan.md §M9):**
 
-*Entity-level (no Spring):*
-- `sequencePuzzle_correctOrder_returnsTrue`
-- `sequencePuzzle_wrongOrder_returnsFalse`
-- `sequencePuzzle_extraItems_returnsFalse`
-- `itemUsePuzzle_correctItemAndTarget_returnsTrue`
-- `itemUsePuzzle_wrongItem_returnsFalse`
-- `itemUsePuzzle_wrongTarget_returnsFalse`
+*Unit:*
+- `saveGame_writesJsonFileToSavesDir`: call `saveGame(gameId)`, assert file exists at `./saves/{gameId}.json`
+- `saveGame_fileContainsMutableStateOnly`: assert saved JSON has `gameId`, `currentRoomId`, `status`,
+  `solvedPuzzleIds`, `heldItemIds` — and does NOT contain room names, puzzle descriptions, etc.
+- `loadGame_readsFileAndRestoresSession`: write a known snapshot file, call `loadGame(gameId)`,
+  assert `GameSession` fields match the file content
+- `loadGame_missingFile_throwsSaveNotFoundException`
+- `saveAndLoad_roundTrip_sessionFieldsMatch`: save then load, assert round-trip equality of all mutable fields
 
 *Integration:*
-- `UseItemHappyPathTest`: after solving `test_combo_puzzle` (awards `test_combo_reward`),
-  POST `/use-item` with `{"itemId":"test_combo_reward","targetObjectId":"<targetObj>"}` → 200, puzzle solved
-- `UseItemNotInInventoryTest`: use an item not held → 409 `ITEM_NOT_IN_INVENTORY`
-- `UseItemNoMatchingPuzzleTest`: use item+target with no matching `ItemUsePuzzle` → 404 `PUZZLE_NOT_FOUND`
-- **`GameFlowIntegrationTest.goldenPath_solveAllPuzzles_winConditionFires`**: solve all 3 test-world
-  puzzles, assert final response has `gameStatus = COMPLETE`
+- `SaveLoadIntegrationTest.saveGame_returnsLastActionResultSaved`
+- `SaveLoadIntegrationTest.loadGame_restoresInventoryAndSolvedPuzzles`
+- `SaveLoadIntegrationTest.loadGame_unknownGameId_returns404`
 
 **Green:**
-- `SequencePuzzle.attempt()` — already implemented (M2); just needs tests
-- `ItemUsePuzzle.attempt()` — already stubbed (M2); implement checking `requiredItemId` + `targetObjectId`
-- `UseItemRequest` DTO (`@NotBlank itemId`, `@NotBlank targetObjectId`)
-- `ItemNotInInventoryException` + 409 handler in `GlobalExceptionHandler`
-- `PuzzleEvaluationService.useItem(UUID, UseItemRequest)` — finds matching `ItemUsePuzzle` in current
-  room by `(requiredItemId, targetObjectId)`, checks item in inventory, evaluates, awards reward
-- `GameController.useItem` endpoint: `POST /{gameId}/use-item`
-- **Win-condition check** in `GameSessionService.buildStateDTO()`:
-  ```java
-  if (!session.isComplete() && session.getSolvedPuzzleIds().containsAll(allPuzzleIds)) {
-      session.setStatus(GameStatus.COMPLETE);
-      gameSessionRepository.save(session);
-  }
-  ```
-  `allPuzzleIds` is loaded once from `PuzzleRepository.findAll()` at startup and cached (or queried inline).
+- `SaveSnapshotDTO` (plain POJO, no JPA): `gameId`, `currentRoomId`, `status`, `createdAt`,
+  `lastUpdatedAt`, `solvedPuzzleIds`, `heldItemIds`
+- `SaveLoadService.saveGame(UUID gameId)` → writes `./saves/{gameId}.json` via `ObjectMapper.writeValue`
+- `SaveLoadService.loadGame(UUID gameId)` → reads `./saves/{gameId}.json`, rebuilds `GameSession`
+  (updates existing or creates new), returns `GameStateDTO`
+- `SaveNotFoundException` + 404 handler in `GlobalExceptionHandler` (error code `SAVE_NOT_FOUND` if
+  enum has it, else reuse `GAME_NOT_FOUND`)
+- `GameController` endpoints: `POST /{gameId}/save`, `POST /{gameId}/load`
+- `LastActionResult.SAVED` and `LastActionResult.LOADED` are already in the enum — no change needed
+- `./saves/` directory: create at startup in `SaveLoadService` via `Files.createDirectories`
+- `application.properties`: add `escape.saves.dir=./saves` (already present in `design.md §13a`)
+- `application-test.properties`: add `escape.saves.dir=./target/test-saves` (isolated from prod)
 
-**Test-world additions needed for M8:**
-- Add an `ItemUsePuzzle` to `world-test.json`: e.g. `test_item_use_puzzle`
-  (`requiredItemId: "test_combo_reward"`, `targetObjectId: "some_target"`, `roomId: "test_room"`)
-- Add a `SequencePuzzle` to `world-test.json`: e.g. `test_seq_puzzle`
-  (`expectedSequence: ["a","b","c"]`)
-- Update `WorldSeedServiceTest` counts accordingly.
+**Important — File I/O rubric coverage:**  
+`SaveLoadService` uses `java.io.File` or `java.nio.file.Files` (or both) to read/write JSON — this is
+the canonical AP CS File I/O demonstration. Prefer `Files.writeString` / `Files.readString` over streams
+for simplicity at AP CS level.
 
-**Rubric:** Loops concept demonstrated by `SequencePuzzle.attempt()` iterating `expectedSequence`.
+**`design.md §6`** has the REST contract for save/load endpoints. Check it before implementing.
 
-**Important — `ItemUsePuzzle` implementation note:**  
-Check `ItemUsePuzzle.java` — `attempt()` may just be a stub from M2. If so, implement:
-```java
-@Override
-public boolean attempt(Map<String, String> inputs) {
-    String item = inputs.get("itemId");
-    String target = inputs.get("targetObjectId");
-    return requiredItemId.equals(item) && targetObjectId.equals(target);
-}
-```
+**Gotcha:** `world-test.json` and `world.json` both define the _static_ world. Saves contain only the
+_mutable_ session state. When loading, the service must merge: update the existing `GameSession` in H2
+(or create if missing), but never overwrite `Room`/`Puzzle`/`InventoryItem` tables.
 
 ---
 
@@ -251,7 +238,7 @@ public boolean attempt(Map<String, String> inputs) {
 ```
 git remote: git@github.com:avishekdas/game-java-sample.git
 branch: main
-last commit: feat(M7): puzzle evaluation — combination and riddle types
+last commit: feat(M8): sequence + item-use puzzles + win condition
 ```
 
 ---
@@ -263,7 +250,7 @@ last commit: feat(M7): puzzle evaluation — combination and riddle types
 | Classes & Objects | M2 | Every entity in `com.abhishri.escape.domain` |
 | Inheritance | M2 + M7 | `Puzzle` → 4 subclasses, JOINED in H2; polymorphic `attempt()` dispatched live in M7 |
 | ArrayLists | M2 | `solvedPuzzleIds`, `heldItemIds`, `connectedRoomIds`, `expectedSequence` |
-| Loops | **M8 (next)** | `SequencePuzzle.attempt()` — iterate expected vs submitted |
+| Loops | M8 | `SequencePuzzle.attempt()` — iterates `expectedSequence` to verify submitted order |
 | Conditionals | M5 | Room adjacency check in `GameSessionService.move()` |
-| File I/O | M3 + M9 | M3: `WorldSeedService` reads `world.json`; M9: `SaveLoadService` writes JSON snapshots |
+| File I/O | M3 + **M9 (next)** | M3: `WorldSeedService` reads `world.json`; M9: `SaveLoadService` writes/reads JSON snapshots |
 | GUI | M10–M14 (pending) | `MainFrame`, `ScenePanel`, all `PuzzleDialog` subclasses |
