@@ -7,7 +7,7 @@ import java.io.InputStream;
 
 public class FileAssetManager implements AssetManager {
 
-    private final PlaceholderAssetManager fallback = new PlaceholderAssetManager();
+    private final AssetManager fallback = new ProceduralAssetManager();
 
     @Override
     public Image getBackground(String roomId) {
