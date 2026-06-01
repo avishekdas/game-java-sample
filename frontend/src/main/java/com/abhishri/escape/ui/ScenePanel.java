@@ -170,13 +170,37 @@ public class ScenePanel extends JPanel {
         g2.draw(rr);
         g2.setStroke(new BasicStroke(1f));
 
-        // Label: centered, FONT_LABEL, CANDLE_TEXT; append ✓ if solved
-        String label = h.isSolved() ? h.getLabel() + " ✓" : h.getLabel();
+        // Label: word-wrapped if too wide; ✓ appended to last line if solved
+        String labelText = h.isSolved() ? h.getLabel() + " ✓" : h.getLabel();
         g2.setFont(ThemeConstants.FONT_LABEL);
         g2.setColor(ThemeConstants.CANDLE_TEXT);
         FontMetrics fm = g2.getFontMetrics();
-        int tx = b.x + (b.width  - fm.stringWidth(label)) / 2;
-        int ty = b.y + (b.height - fm.getHeight()) / 2 + fm.getAscent();
-        g2.drawString(label, tx, ty);
+        List<String> lines = wrapLabel(labelText, fm, b.width - 6);
+        int lineH  = fm.getHeight();
+        int totalH = lineH * lines.size();
+        int startY = b.y + (b.height - totalH) / 2 + fm.getAscent();
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            int tx = b.x + (b.width - fm.stringWidth(line)) / 2;
+            g2.drawString(line, tx, startY + i * lineH);
+        }
+    }
+
+    private List<String> wrapLabel(String text, FontMetrics fm, int maxWidth) {
+        if (fm.stringWidth(text) <= maxWidth) return List.of(text);
+        String[] words = text.split(" ");
+        List<String> lines = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            String candidate = current.length() == 0 ? word : current + " " + word;
+            if (fm.stringWidth(candidate) <= maxWidth) {
+                current = new StringBuilder(candidate);
+            } else {
+                if (current.length() > 0) lines.add(current.toString());
+                current = new StringBuilder(word);
+            }
+        }
+        if (current.length() > 0) lines.add(current.toString());
+        return lines.isEmpty() ? List.of(text) : lines;
     }
 }
