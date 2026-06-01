@@ -4,14 +4,15 @@ Single-player point-and-click escape room game. Java 17 + Spring Boot 3 backend,
 
 ## Status
 
-Phase 1 (MVP) — **complete**. 102 tests pass (86 backend + 16 frontend). All `design.md §20` acceptance boxes are green.
+Phase 1 (MVP) — **complete**. Phase 2 (UI upgrade, branch `ui-improvement`) — **complete**.
+150 tests pass (86 backend + 64 frontend). Zero backend changes in the UI upgrade.
 
 ## Documentation
 
 - **[`idea.md`](./idea.md)** — vision, scope, theme, AP CS rubric mapping, resolved architectural decisions, MVP build order.
 - **[`design.md`](./design.md)** — implementation-ready blueprint: DDL, DTOs, REST API reference, sequence diagrams, config files, acceptance criteria.
-
-Read `idea.md` first to understand **what** and **why**. Read `design.md` when implementing for the **how**.
+- **[`design_ui_upgrade.md`](./design_ui_upgrade.md)** — UI upgrade design: color palette, typography, component specs, procedural art algorithm.
+- **[`plan_ui_upgrade.md`](./plan_ui_upgrade.md)** — UI upgrade TDD milestone plan (UI-M1 through UI-M5).
 
 ## Prerequisites
 
@@ -22,40 +23,84 @@ Read `idea.md` first to understand **what** and **why**. Read `design.md` when i
 - Maven 3.8+
 - (Optional) An IDE that understands Maven multi-module projects: IntelliJ IDEA, Eclipse, or VS Code with the Java extension pack.
 
-## Quickstart
+## Running the Game (Manual Testing)
 
-From the repo root:
+You need **two terminals** open at the repo root. Keep both running while you play.
 
-```
+### Step 1 — Run all tests (optional sanity check)
+
+```bash
 JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
   mvn --offline clean test
 ```
 
-Run the backend (terminal 1):
+Expected: `BUILD SUCCESS`, 150 tests, 0 failures.
 
-```
+### Step 2 — Start the backend (Terminal 1)
+
+```bash
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home
-
-JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
-  mvn -pl backend spring-boot:run
+mvn -pl backend spring-boot:run
 ```
 
-The backend binds to `http://127.0.0.1:8080`. Verify it is up:
-
+Wait for this line in the log before starting the frontend:
 ```
+Tomcat started on port 8080
+```
+
+Verify the backend is up (in any terminal):
+```bash
 curl http://127.0.0.1:8080/api/health
 ```
+Expected response: `{"status":"UP"}` (or similar).
 
-Run the frontend (terminal 2, after the backend is up):
+### Step 3 — Start the frontend (Terminal 2)
 
-```
+```bash
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home
-
-JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
-  mvn -pl frontend exec:java -Dexec.mainClass=com.abhishri.escape.ui.EscapeRoomApp
+mvn -pl frontend exec:java -Dexec.mainClass=com.abhishri.escape.ui.EscapeRoomApp
 ```
 
-The Swing window opens to the Entry Foyer scene. Click "New Game" to start. Full walkthrough of the golden path is in `idea.md` §3.
+The Swing window opens. Click **New Game** in the top toolbar to begin.
+
+### Step 4 — Stop
+
+Press `Ctrl+C` in Terminal 1 to stop the backend. Closing the Swing window stops the frontend.
+
+## What to Verify (UI Upgrade Checklist)
+
+After clicking New Game, walk through these checks before playing the full golden path:
+
+**Theme**
+- [ ] Window background is dark (near-black), not grey
+- [ ] Status bar is dark with brass-bordered buttons in a serif font
+- [ ] Dialogue panel has a parchment-coloured text area with a thin brass border
+- [ ] Inventory panel is dark-background with a brass-outlined titled border
+
+**Scene panel**
+- [ ] Entry Foyer background is atmospheric dark art (amber gradient glow + pillar silhouettes), not a solid blue rectangle
+- [ ] Hotspots are rounded brass-outlined overlays, not plain yellow rectangles
+- [ ] Moving the mouse over a hotspot changes the cursor to a hand and brightens the border
+- [ ] Moving off a hotspot reverts the cursor and border
+- [ ] Clicking "→ Reading Hall" shows a ~200ms crossfade as the scene transitions
+- [ ] Performing an action (examine, pickup) in the same room does **not** trigger a flash
+
+**Progress dots**
+- [ ] Status bar centre shows 6 hollow dots (○○○○○○) at game start
+- [ ] Each solved puzzle fills one dot gold (●○○○○○ after first solve)
+
+**Dialogs**
+- [ ] Opening the Wall Clock riddle dialog: background is dark, text field is parchment-coloured
+- [ ] Opening the Display Case combination dialog: spinners are parchment-coloured
+- [ ] OK and Cancel buttons in all dialogs are dark with brass borders
+
+**Inventory**
+- [ ] After picking up an item, the inventory cell shows a small icon (unique shape per item)
+- [ ] Clicking an inventory item changes the panel title to `USING: [item name]`
+- [ ] Clicking elsewhere (or using the item) reverts the title to `INVENTORY`
+
+**Solved state**
+- [ ] After solving the Wall Clock, navigate away and back — that hotspot shows `Wall Clock ✓` with a green-tint overlay
 
 ## Project Layout
 
