@@ -16,6 +16,7 @@ import java.util.Map;
 public class SequencePuzzleDialog extends PuzzleDialog {
 
     private final DefaultListModel<String> listModel;
+    private final JList<String> list;   // promoted from local to field for getList() and action listeners
 
     public SequencePuzzleDialog(Window owner, String puzzleId, List<String> availableItems,
                                 String description) {
@@ -23,10 +24,19 @@ public class SequencePuzzleDialog extends PuzzleDialog {
 
         listModel = new DefaultListModel<>();
         availableItems.forEach(listModel::addElement);
-        JList<String> list = new JList<>(listModel);
+        list = new JList<>(listModel);
 
-        JButton moveUp = new JButton("▲ Up");
+        // Style list BEFORE initLayout — applyThemeRecursively skips JList
+        list.setBackground(ThemeConstants.DARK_WOOD);
+        list.setForeground(ThemeConstants.CANDLE_TEXT);
+        list.setSelectionBackground(ThemeConstants.BRASS_GLOW);
+        list.setSelectionForeground(ThemeConstants.NIGHT_BLACK);
+
+        JButton moveUp   = new JButton("▲ Up");
         JButton moveDown = new JButton("▼ Down");
+        ThemeConstants.applyDarkButton(moveUp);
+        ThemeConstants.applyDarkButton(moveDown);
+
         moveUp.addActionListener(e -> {
             int idx = list.getSelectedIndex();
             if (idx > 0) {
@@ -65,4 +75,5 @@ public class SequencePuzzleDialog extends PuzzleDialog {
     }
 
     DefaultListModel<String> getListModel() { return listModel; }
+    JList<String> getList() { return list; }
 }
