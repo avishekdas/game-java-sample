@@ -4,6 +4,7 @@ import com.abhishri.escape.ui.dto.GameStateDTO;
 import com.abhishri.escape.ui.dto.GameStatus;
 import com.abhishri.escape.ui.dto.RoomDTO;
 import com.abhishri.escape.ui.dto.RoomObjectDTO;
+import com.abhishri.escape.ui.dto.SaveMetadataDTO;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -82,11 +83,16 @@ public class MainFrame extends JFrame {
         if (state.getInventory() != null) {
             inventoryPanel.setItems(state.getInventory());
         }
+        if (state.getSolvedPuzzleIds() != null) {
+            int total = state.getTotalPuzzles() > 0 ? state.getTotalPuzzles() : 6;
+            statusBar.setSolvedCount(state.getSolvedPuzzleIds().size(), total);
+        }
         if (state.getDialogueMessage() != null && !state.getDialogueMessage().isBlank()) {
             dialoguePanel.append(state.getDialogueMessage());
         }
         if (state.getGameStatus() == GameStatus.COMPLETE) {
             dialoguePanel.append("*** YOU SOLVED THE MYSTERY! The Vanishing Librarian case is closed. ***");
+            statusBar.setSaveEnabled(false);
             if (!winShown) {
                 winShown = true;
                 String msg = state.getDialogueMessage() != null ? state.getDialogueMessage()
@@ -100,14 +106,31 @@ public class MainFrame extends JFrame {
         JOptionPane.showMessageDialog(this, message, "You're free!", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    protected boolean confirmNewGame() {
+        int choice = JOptionPane.showConfirmDialog(this,
+                "Start a new game? Unsaved progress will be lost.",
+                "New Game", JOptionPane.YES_NO_OPTION);
+        return choice == JOptionPane.YES_OPTION;
+    }
+
+    protected String selectSaveFile(List<String> saves) {
+        return (String) JOptionPane.showInputDialog(this,
+                "Select save file:", "Load Game",
+                JOptionPane.PLAIN_MESSAGE, null,
+                saves.toArray(), saves.get(0));
+    }
+
     public StatusBar getStatusBar() { return statusBar; }
     public ScenePanel getScenePanel() { return scenePanel; }
     public InventoryPanel getInventoryPanel() { return inventoryPanel; }
     public DialoguePanel getDialoguePanel() { return dialoguePanel; }
 
     private void handleNewGame() {
+        if (!confirmNewGame()) return;
         GameStateDTO state = client.newGame();
         gameId = state.getGameId();
+        winShown = false;
+        statusBar.setSaveEnabled(true);
         dialoguePanel.setText("");
         applyState(state);
     }
@@ -126,10 +149,18 @@ public class MainFrame extends JFrame {
             dialoguePanel.append("No game in progress.");
             return;
         }
-        String filename = JOptionPane.showInputDialog(this,
-                "Enter save filename:", "Load Game", JOptionPane.PLAIN_MESSAGE);
-        if (filename == null || filename.isBlank()) return;
-        GameStateDTO state = client.loadGame(gameId, filename.trim());
+        List<SaveMetadataDTO> saves = client.listSaves(gameId);
+        if (saves.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No saves yet.", "Load Game", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        List<String> filenames = new ArrayList<>();
+        for (SaveMetadataDTO save : saves) {
+            filenames.add(save.getFilename());
+        }
+        String selected = selectSaveFile(filenames);
+        if (selected == null) return;
+        GameStateDTO state = client.loadGame(gameId, selected);
         applyState(state);
     }
 

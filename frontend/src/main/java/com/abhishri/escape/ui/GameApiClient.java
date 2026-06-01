@@ -1,7 +1,9 @@
 package com.abhishri.escape.ui;
 
 import com.abhishri.escape.ui.dto.GameStateDTO;
+import com.abhishri.escape.ui.dto.SaveMetadataDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -9,6 +11,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -77,6 +80,15 @@ public class GameApiClient {
         String body = serialize(Map.of("filename", filename));
         String json = post(baseUrl + "/" + gameId + "/load", body);
         return deserialize(json, GameStateDTO.class);
+    }
+
+    public List<SaveMetadataDTO> listSaves(UUID gameId) {
+        String json = get(baseUrl + "/" + gameId + "/saves");
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<SaveMetadataDTO>>() {});
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to parse saves list", e);
+        }
     }
 
     private String post(String url, String jsonBody) {

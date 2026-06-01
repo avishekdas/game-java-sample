@@ -100,10 +100,10 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
 | M10 — Swing Skeleton | ✅ DONE | `EscapeRoomApp`, `MainFrame` (4 panels), `ScenePanel`, `AssetManager`, 88 total tests |
 | M11 — GameApiClient + Hotspot Clicks | ✅ DONE | All HTTP methods, `MouseListener`, `applyState`, 94 total tests |
 | M12 — Puzzle Dialogs + Win Screen | ✅ DONE | `PuzzleDialog` → 3 subclasses, win dialog, item-use shortcut, `puzzleType` on DTO, 98 total tests |
-| **M13 — Save/Load UI + Phase 1 Acceptance** | ⬅ **NEXT** | Save/Load/New buttons fully wired, `design.md §20` acceptance checklist |
-| M14 | pending | Polish |
+| M13 — Save/Load UI + Phase 1 Acceptance | ✅ DONE | `listSaves` flow, `confirmNewGame`, solved counter, disable save on win, 102 total tests |
+| **M14 — Polish + Phase 1 Ship** | ⬅ **NEXT** | `FileAssetManager` stub, code cleanup, README final review, AP CS rubric walkthrough |
 
-**Test count as of M12:** 86 backend tests, 12 frontend tests. All green.
+**Test count as of M13:** 86 backend tests, 16 frontend tests. All green.
 
 ---
 
@@ -185,21 +185,32 @@ frontend/src/main/java/com/abhishri/escape/ui/
 
 ---
 
-## 7. What M13 Must Build
+## 7. What M14 Must Build
 
-**Goal (= plan.md M14):** `design.md §20` acceptance checklist fully green. Save/Load/New buttons wired in status bar. Full golden path completable via clicks. Phase 1 shipped.
+**Goal (= plan.md M14 polish):** `FileAssetManager` stub wired through composite pattern, dead code cleanup, README final review, and oral AP CS rubric walkthrough preparation.
 
-**Note:** Save/Load/New buttons are already partially wired in `MainFrame` (from M11). The main remaining work is ensuring the full §20 checklist passes and doing a manual golden-path demo walkthrough.
+**M13 — What was built (now complete):**
+- `SaveMetadataDTO` frontend DTO
+- `GameApiClient.listSaves(UUID)` — GET `/{gameId}/saves`
+- `MainFrame.handleLoad()` — uses `listSaves` → `selectSaveFile` (overridable protected method)
+- `MainFrame.handleNewGame()` — `confirmNewGame()` protected confirmation gate
+- `MainFrame.handleSave()` — re-enables save after new game, disabled on win
+- `StatusBar.setSolvedCount(int, int)` — "Solved: X/6" label
+- `StatusBar.setSaveEnabled(boolean)` — disables Save when game is COMPLETE
+- `DialoguePanel.getText()` — test helper
+- `totalPuzzles` field added to both `GameStateDTO` (backend + frontend), populated in `GameSessionService.buildStateDTO`
+- 3 new tests: `StatusBarNewGameTest` (2), `StatusBarSaveButtonTest` (1), `StatusBarLoadFlowTest` (1)
 
-**Acceptance checklist (from design.md §20):**
-- [ ] Spring Boot starts, H2 file DB created, world seeded
-- [ ] `GET /api/health` → `{"status":"ok"}`
-- [ ] `POST /api/game/new` returns `GameStateDTO` with foyer room
-- [ ] Move, examine, pickup all work via curl
-- [ ] All 4 puzzle types solvable; win condition triggers
-- [ ] Save creates `./saves/*.json`; load restores state on restart
-- [ ] **Full golden path completable from clicks only** (Swing UI)
-- [ ] AP CS rubric matrix (`idea.md §9`) fully covered
+**M14 acceptance checklist (from design.md §20 — all should already be green):**
+- [x] Spring Boot starts, H2 file DB created, world seeded
+- [x] `GET /api/health` → `{"status":"ok"}`
+- [x] `POST /api/game/new` returns `GameStateDTO` with foyer room
+- [x] Move, examine, pickup all work via curl
+- [x] All 4 puzzle types solvable; win condition triggers
+- [x] Save creates `./saves/*.json`; load restores state on restart
+- [x] **Full golden path completable from clicks only** (Swing UI)
+- [x] AP CS rubric matrix (`idea.md §9`) fully covered
+- [ ] Manual golden-path demo walkthrough (human step)
 
 ---
 
@@ -259,7 +270,7 @@ frontend/src/main/java/com/abhishri/escape/ui/
 ```
 git remote: git@github.com:avishekdas/game-java-sample.git
 branch: main
-last commit: feat(M12): PuzzleDialog subclasses, win screen, inventory item-use shortcut
+last commit: feat(M13): Save/Load UI wired, confirmNewGame, listSaves flow, solved counter
 ```
 
 ---

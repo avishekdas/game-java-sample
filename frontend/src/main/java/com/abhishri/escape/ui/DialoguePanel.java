@@ -33,4 +33,8 @@ public class DialoguePanel extends JPanel {
     public void setText(String text) {
         textArea.setText(text);
     }
+
+    public String getText() {
+        return textArea.getText();
+    }
 }

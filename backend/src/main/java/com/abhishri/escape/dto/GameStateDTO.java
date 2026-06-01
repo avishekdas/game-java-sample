@@ -14,6 +14,7 @@ public class GameStateDTO {
     private List<String> solvedPuzzleIds;
     private String dialogueMessage;
     private LastActionResult lastActionResult;
+    private int totalPuzzles;
 
     public UUID getGameId() { return gameId; }
     public void setGameId(UUID gameId) { this.gameId = gameId; }
@@ -35,4 +36,7 @@ public class GameStateDTO {
 
     public LastActionResult getLastActionResult() { return lastActionResult; }
     public void setLastActionResult(LastActionResult lastActionResult) { this.lastActionResult = lastActionResult; }
+
+    public int getTotalPuzzles() { return totalPuzzles; }
+    public void setTotalPuzzles(int totalPuzzles) { this.totalPuzzles = totalPuzzles; }
 }

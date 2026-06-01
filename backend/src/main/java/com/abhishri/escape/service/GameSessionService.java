@@ -155,10 +155,10 @@ public class GameSessionService {
 
     public GameStateDTO buildStateDTO(GameSession session, String message, LastActionResult result) {
         // Win condition: Conditionals rubric — flip status to COMPLETE when all puzzles solved
+        List<String> allPuzzleIds = puzzleRepository.findAll().stream()
+                .map(Puzzle::getId)
+                .toList();
         if (session.getStatus() == GameStatus.IN_PROGRESS) {
-            List<String> allPuzzleIds = puzzleRepository.findAll().stream()
-                    .map(Puzzle::getId)
-                    .toList();
             if (!allPuzzleIds.isEmpty() && session.getSolvedPuzzleIds().containsAll(allPuzzleIds)) {
                 session.setStatus(GameStatus.COMPLETE);
                 gameSessionRepository.save(session);
@@ -194,6 +194,7 @@ public class GameSessionService {
         dto.setCurrentRoom(roomDTO);
         dto.setInventory(inventory);
         dto.setSolvedPuzzleIds(new ArrayList<>(session.getSolvedPuzzleIds()));
+        dto.setTotalPuzzles(allPuzzleIds.size());
         dto.setDialogueMessage(message);
         dto.setLastActionResult(result);
         return dto;
