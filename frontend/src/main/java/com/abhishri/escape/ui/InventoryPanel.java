@@ -28,6 +28,15 @@ public class InventoryPanel extends JPanel {
         items.forEach(model::addElement);
     }
 
+    public String getSelectedItemId() {
+        InventoryItemDTO selected = itemList.getSelectedValue();
+        return selected != null ? selected.getId() : null;
+    }
+
+    public void clearSelection() {
+        itemList.clearSelection();
+    }
+
     public JList<InventoryItemDTO> getItemList() {
         return itemList;
     }

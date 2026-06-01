@@ -12,7 +12,9 @@ import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class MainFrame extends JFrame {
@@ -24,6 +26,8 @@ public class MainFrame extends JFrame {
 
     private final GameApiClient client;
     private UUID gameId;
+    private boolean winShown = false;
+    private Map<String, RoomObjectDTO> roomObjectsByHotspotId = new HashMap<>();
 
     public MainFrame(AssetManager assetManager) {
         this(assetManager, null);
@@ -66,6 +70,11 @@ public class MainFrame extends JFrame {
 
     public void applyState(GameStateDTO state) {
         if (state.getCurrentRoom() != null) {
+            Map<String, RoomObjectDTO> map = new HashMap<>();
+            for (RoomObjectDTO obj : state.getCurrentRoom().getObjects()) {
+                map.put(obj.getId(), obj);
+            }
+            roomObjectsByHotspotId = map;
             statusBar.setRoomName(state.getCurrentRoom().getName());
             scenePanel.setCurrentRoomId(state.getCurrentRoom().getId());
             scenePanel.setHotspots(buildHotspots(state.getCurrentRoom()));
@@ -78,7 +87,17 @@ public class MainFrame extends JFrame {
         }
         if (state.getGameStatus() == GameStatus.COMPLETE) {
             dialoguePanel.append("*** YOU SOLVED THE MYSTERY! The Vanishing Librarian case is closed. ***");
+            if (!winShown) {
+                winShown = true;
+                String msg = state.getDialogueMessage() != null ? state.getDialogueMessage()
+                        : "You solved the mystery! The Vanishing Librarian case is closed.";
+                showWinDialog(msg);
+            }
         }
+    }
+
+    protected void showWinDialog(String message) {
+        JOptionPane.showMessageDialog(this, message, "You're free!", JOptionPane.INFORMATION_MESSAGE);
     }
 
     public StatusBar getStatusBar() { return statusBar; }
@@ -119,13 +138,56 @@ public class MainFrame extends JFrame {
             dialoguePanel.append("Start a new game first.");
             return;
         }
-        GameStateDTO state;
         if ("EXIT".equals(hotspot.getType())) {
-            state = client.move(gameId, hotspot.getObjectId());
-        } else {
-            state = client.examine(gameId, hotspot.getObjectId());
+            applyState(client.move(gameId, hotspot.getObjectId()));
+            return;
         }
-        applyState(state);
+        String selectedItemId = inventoryPanel.getSelectedItemId();
+        if (selectedItemId != null) {
+            applyState(client.useItem(gameId, selectedItemId, hotspot.getObjectId()));
+            inventoryPanel.clearSelection();
+            return;
+        }
+        if ("PUZZLE".equals(hotspot.getType())) {
+            RoomObjectDTO obj = roomObjectsByHotspotId.get(hotspot.getObjectId());
+            if (obj != null && obj.getPuzzleType() != null) {
+                handlePuzzleClick(obj);
+                return;
+            }
+        }
+        applyState(client.examine(gameId, hotspot.getObjectId()));
+    }
+
+    private void handlePuzzleClick(RoomObjectDTO obj) {
+        if ("ITEM_USE".equals(obj.getPuzzleType())) {
+            String selectedItemId = inventoryPanel.getSelectedItemId();
+            if (selectedItemId == null) {
+                dialoguePanel.append("Select an item from your inventory to use here.");
+                return;
+            }
+            applyState(client.useItem(gameId, selectedItemId, obj.getId()));
+            inventoryPanel.clearSelection();
+            return;
+        }
+        PuzzleDialog dialog = createPuzzleDialog(obj);
+        if (dialog == null) return;
+        dialog.setVisible(true);
+        if (dialog.isConfirmed()) {
+            applyState(client.attemptPuzzle(gameId, obj.getPuzzleId(), dialog.getInputs()));
+        }
+    }
+
+    private PuzzleDialog createPuzzleDialog(RoomObjectDTO obj) {
+        return switch (obj.getPuzzleType()) {
+            case "COMBINATION" -> new CombinationPuzzleDialog(this, obj.getPuzzleId(),
+                    obj.getDigitCount() > 0 ? obj.getDigitCount() : 3, obj.getLabel());
+            case "RIDDLE" -> new RiddlePuzzleDialog(this, obj.getPuzzleId(),
+                    obj.getQuestionText() != null ? obj.getQuestionText() : obj.getLabel());
+            case "SEQUENCE" -> new SequencePuzzleDialog(this, obj.getPuzzleId(),
+                    obj.getAvailableItems() != null ? obj.getAvailableItems() : List.of(),
+                    obj.getLabel());
+            default -> null;
+        };
     }
 
     private List<Hotspot> buildHotspots(RoomDTO room) {

@@ -13,7 +13,11 @@ import com.abhishri.escape.dto.MoveRequest;
 import com.abhishri.escape.dto.PickupRequest;
 import com.abhishri.escape.dto.RoomDTO;
 import com.abhishri.escape.dto.RoomObjectDTO;
+import com.abhishri.escape.domain.puzzle.CombinationPuzzle;
+import com.abhishri.escape.domain.puzzle.ItemUsePuzzle;
 import com.abhishri.escape.domain.puzzle.Puzzle;
+import com.abhishri.escape.domain.puzzle.RiddlePuzzle;
+import com.abhishri.escape.domain.puzzle.SequencePuzzle;
 import com.abhishri.escape.exception.GameNotFoundException;
 import com.abhishri.escape.exception.InvalidMoveException;
 import com.abhishri.escape.repository.GameSessionRepository;
@@ -168,9 +172,14 @@ public class GameSessionService {
 
         List<RoomObjectDTO> objects = new ArrayList<>();
         for (RoomObject o : room.getObjects()) {
-            objects.add(new RoomObjectDTO(
+            RoomObjectDTO objDto = new RoomObjectDTO(
                 o.getId(), o.getLabel(), o.isInteractable(),
-                o.getPuzzleId(), o.getPickupItemId(), o.getObjectType()));
+                o.getPuzzleId(), o.getPickupItemId(), o.getObjectType());
+            if (o.getPuzzleId() != null) {
+                puzzleRepository.findById(o.getPuzzleId()).ifPresent(puzzle ->
+                        populatePuzzleFields(objDto, puzzle));
+            }
+            objects.add(objDto);
         }
 
         RoomDTO roomDTO = new RoomDTO(
@@ -188,5 +197,20 @@ public class GameSessionService {
         dto.setDialogueMessage(message);
         dto.setLastActionResult(result);
         return dto;
+    }
+
+    private void populatePuzzleFields(RoomObjectDTO dto, Puzzle puzzle) {
+        if (puzzle instanceof CombinationPuzzle cp) {
+            dto.setPuzzleType("COMBINATION");
+            dto.setDigitCount(cp.getDigitCount());
+        } else if (puzzle instanceof RiddlePuzzle rp) {
+            dto.setPuzzleType("RIDDLE");
+            dto.setQuestionText(rp.getQuestionText());
+        } else if (puzzle instanceof SequencePuzzle sp) {
+            dto.setPuzzleType("SEQUENCE");
+            dto.setAvailableItems(new ArrayList<>(sp.getAvailableItems()));
+        } else if (puzzle instanceof ItemUsePuzzle) {
+            dto.setPuzzleType("ITEM_USE");
+        }
     }
 }

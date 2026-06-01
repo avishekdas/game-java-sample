@@ -2,6 +2,8 @@ package com.abhishri.escape.dto;
 
 import com.abhishri.escape.domain.ObjectType;
 
+import java.util.List;
+
 public class RoomObjectDTO {
 
     private String id;
@@ -10,6 +12,10 @@ public class RoomObjectDTO {
     private String puzzleId;
     private String pickupItemId;
     private ObjectType objectType;
+    private String puzzleType;
+    private int digitCount;
+    private List<String> availableItems;
+    private String questionText;
 
     public RoomObjectDTO() {}
 
@@ -40,4 +46,16 @@ public class RoomObjectDTO {
 
     public ObjectType getObjectType() { return objectType; }
     public void setObjectType(ObjectType objectType) { this.objectType = objectType; }
+
+    public String getPuzzleType() { return puzzleType; }
+    public void setPuzzleType(String puzzleType) { this.puzzleType = puzzleType; }
+
+    public int getDigitCount() { return digitCount; }
+    public void setDigitCount(int digitCount) { this.digitCount = digitCount; }
+
+    public List<String> getAvailableItems() { return availableItems; }
+    public void setAvailableItems(List<String> availableItems) { this.availableItems = availableItems; }
+
+    public String getQuestionText() { return questionText; }
+    public void setQuestionText(String questionText) { this.questionText = questionText; }
 }
