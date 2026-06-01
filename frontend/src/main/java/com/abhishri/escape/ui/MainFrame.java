@@ -127,12 +127,16 @@ public class MainFrame extends JFrame {
 
     private void handleNewGame() {
         if (!confirmNewGame()) return;
-        GameStateDTO state = client.newGame();
-        gameId = state.getGameId();
-        winShown = false;
-        statusBar.setSaveEnabled(true);
-        dialoguePanel.setText("");
-        applyState(state);
+        try {
+            GameStateDTO state = client.newGame();
+            gameId = state.getGameId();
+            winShown = false;
+            statusBar.setSaveEnabled(true);
+            dialoguePanel.setText("");
+            applyState(state);
+        } catch (RuntimeException e) {
+            dialoguePanel.append("Error: " + toFriendlyMessage(e));
+        }
     }
 
     private void handleSave() {
@@ -140,8 +144,12 @@ public class MainFrame extends JFrame {
             dialoguePanel.append("No game in progress.");
             return;
         }
-        String filename = client.saveGame(gameId);
-        dialoguePanel.append("Saved as: " + filename);
+        try {
+            String filename = client.saveGame(gameId);
+            dialoguePanel.append("Saved as: " + filename);
+        } catch (RuntimeException e) {
+            dialoguePanel.append("Save failed: " + toFriendlyMessage(e));
+        }
     }
 
     private void handleLoad() {
@@ -149,19 +157,23 @@ public class MainFrame extends JFrame {
             dialoguePanel.append("No game in progress.");
             return;
         }
-        List<SaveMetadataDTO> saves = client.listSaves(gameId);
-        if (saves.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No saves yet.", "Load Game", JOptionPane.INFORMATION_MESSAGE);
-            return;
+        try {
+            List<SaveMetadataDTO> saves = client.listSaves(gameId);
+            if (saves.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No saves yet.", "Load Game", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            List<String> filenames = new ArrayList<>();
+            for (SaveMetadataDTO save : saves) {
+                filenames.add(save.getFilename());
+            }
+            String selected = selectSaveFile(filenames);
+            if (selected == null) return;
+            GameStateDTO state = client.loadGame(gameId, selected);
+            applyState(state);
+        } catch (RuntimeException e) {
+            dialoguePanel.append("Load failed: " + toFriendlyMessage(e));
         }
-        List<String> filenames = new ArrayList<>();
-        for (SaveMetadataDTO save : saves) {
-            filenames.add(save.getFilename());
-        }
-        String selected = selectSaveFile(filenames);
-        if (selected == null) return;
-        GameStateDTO state = client.loadGame(gameId, selected);
-        applyState(state);
     }
 
     private void handleHotspotClick(Hotspot hotspot) {
@@ -169,24 +181,28 @@ public class MainFrame extends JFrame {
             dialoguePanel.append("Start a new game first.");
             return;
         }
-        if ("EXIT".equals(hotspot.getType())) {
-            applyState(client.move(gameId, hotspot.getObjectId()));
-            return;
-        }
-        String selectedItemId = inventoryPanel.getSelectedItemId();
-        if (selectedItemId != null) {
-            applyState(client.useItem(gameId, selectedItemId, hotspot.getObjectId()));
-            inventoryPanel.clearSelection();
-            return;
-        }
-        if ("PUZZLE".equals(hotspot.getType())) {
-            RoomObjectDTO obj = roomObjectsByHotspotId.get(hotspot.getObjectId());
-            if (obj != null && obj.getPuzzleType() != null) {
-                handlePuzzleClick(obj);
+        try {
+            if ("EXIT".equals(hotspot.getType())) {
+                applyState(client.move(gameId, hotspot.getObjectId()));
                 return;
             }
+            String selectedItemId = inventoryPanel.getSelectedItemId();
+            if (selectedItemId != null) {
+                applyState(client.useItem(gameId, selectedItemId, hotspot.getObjectId()));
+                inventoryPanel.clearSelection();
+                return;
+            }
+            if ("PUZZLE".equals(hotspot.getType())) {
+                RoomObjectDTO obj = roomObjectsByHotspotId.get(hotspot.getObjectId());
+                if (obj != null && obj.getPuzzleType() != null) {
+                    handlePuzzleClick(obj);
+                    return;
+                }
+            }
+            applyState(client.examine(gameId, hotspot.getObjectId()));
+        } catch (RuntimeException e) {
+            dialoguePanel.append("Error: " + toFriendlyMessage(e));
         }
-        applyState(client.examine(gameId, hotspot.getObjectId()));
     }
 
     private void handlePuzzleClick(RoomObjectDTO obj) {
@@ -219,6 +235,18 @@ public class MainFrame extends JFrame {
                     obj.getLabel());
             default -> null;
         };
+    }
+
+    private String toFriendlyMessage(RuntimeException e) {
+        String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        if (msg.contains("ConnectException") || msg.contains("HTTP POST failed")
+                || msg.contains("HTTP GET failed")) {
+            return "Cannot reach game server — is the backend running on port 8080?";
+        }
+        if (msg.contains("Server error 4") || msg.contains("Server error 5")) {
+            return msg;
+        }
+        return msg;
     }
 
     private List<Hotspot> buildHotspots(RoomDTO room) {
