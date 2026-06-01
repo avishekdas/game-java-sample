@@ -60,7 +60,7 @@ Swing's paint/render path is not unit-testable at the pixel level. The following
 
 ## 4. Milestone Map
 
-5 milestones. Build order chosen to minimize integration surprises: foundation first (colors, art), then structural changes (Hotspot + MainFrame plumbing), then the big visual components from outermost to innermost.
+7 milestones. UI-M1–M5 execute the visual overhaul; UI-M6–M7 add the visual hint system (Option A room art clues + Option B examination cards). Build order: foundation → structural plumbing → scene → panels → dialogs → room art counting → hint card overlays.
 
 | #     | Name                                         | Primary output                                               |
 |-------|----------------------------------------------|--------------------------------------------------------------|
@@ -69,6 +69,8 @@ Swing's paint/render path is not unit-testable at the pixel level. The following
 | UI-M3 | Scene — ScenePanel visual rework             | Styled hotspots, hover, solved overlay, crossfade, `FileAssetManager` fallback swap |
 | UI-M4 | Panels — StatusBar, DialoguePanel, InventoryPanel | Dark theme on all non-dialog panels; icon cache; dot progress; parchment dialogue |
 | UI-M5 | Dialogs + Final Gate                         | Dark-themed puzzle dialogs; full `design_ui_upgrade.md §9` acceptance gate green |
+| UI-M6 | Room Art Counting Clues (Option A)           | 8 bookshelves in Reading Hall; 3 brass nail circles in Foyer doorframe |
+| UI-M7 | Examination Hint Cards (Option B)            | `getHintCard()` on `AssetManager`; 4 procedural card images; `ScenePanel` overlay; `MainFrame` trigger logic |
 
 ---
 
@@ -544,6 +546,149 @@ Play through the complete `idea.md §3` golden path from click 1 to the win scre
 
 ---
 
+### UI-M6 — Room Art: Counting Clues (Option A)
+
+**Goal.** `ProceduralAssetManager` draws exactly 8 bookshelf silhouettes in the Reading Hall (up from 5) and 3 small brass nail circles in the Foyer doorframe. Archives already have 4 cabinet silhouettes — no change needed. These changes embed combination-puzzle digit clues visually in the room art without stating the answer.
+
+**North-star tie.** A player exploring rooms before opening the combination dialog can count objects in the art to discover the three digits (3, 8, 4). This is the parallel visual discovery path described in `design_ui_upgrade.md §10.1`. Neither hint path (visual or text) is sufficient alone — the player still needs to connect three separate rooms to the three-dial combination.
+
+**Pre-conditions.** UI-M5 complete. All 150 tests passing.
+
+**Red — write these tests first.**
+
+`ProceduralAssetManagerCountingCluesTest.java` (new):
+- Cast `getBackground("room_foyer")` to `BufferedImage`; assert pixel at (207, 140) is NOT `ThemeConstants.NIGHT_BLACK.getRGB()` — confirms a nail circle exists at that point (the circle is `AGED_BRASS`; the baseline background at that coordinate is dark gradient)
+- Same assertion for nail coordinates (192, 145) and (222, 148) — all three nail centers must be non-NIGHT_BLACK
+- Cast `getBackground("room_reading_hall")` to `BufferedImage`; assert pixel at (696, 200) is NOT `ThemeConstants.NIGHT_BLACK.getRGB()` — this coordinate falls inside bookshelf 8's area; with 5 bookshelves it was empty background (gradient only)
+- Existing `ProceduralAssetManagerTest` (dimensions, distinctness assertions) must still pass — regression pin
+
+All four new assertions are Red today: the foyer has no nail circles (those coordinates are currently dark gradient), and the reading hall 8th shelf slot is currently unoccupied.
+
+**Green.**
+
+`ProceduralAssetManager.java` — two targeted changes inside the reading hall and foyer silhouette drawing blocks:
+
+1. **Reading Hall — 8 bookshelves** (replaces the existing 5-shelf loop):
+```java
+int shelfW = 72;
+int gap = (800 - 8 * shelfW) / 9;   // ≈ 24px
+for (int i = 0; i < 8; i++) {
+    int sx = gap + i * (shelfW + gap);
+    g2.fillRect(sx, 50, shelfW, 360);
+}
+```
+
+2. **Foyer — 3 brass nail heads** (added after existing doorframe and reception desk drawing):
+```java
+g2.setColor(ThemeConstants.AGED_BRASS);
+int[] nailX = {192, 207, 222};
+int[] nailY = {145, 140, 148};
+for (int i = 0; i < 3; i++) {
+    g2.fillOval(nailX[i] - 2, nailY[i] - 2, 5, 5);
+}
+```
+
+No other changes to `ProceduralAssetManager`. No other files touched in this milestone.
+
+**Refactor.** None — the changes are already minimal and self-contained.
+
+**Acceptance.**
+
+- Automated: `ProceduralAssetManagerCountingCluesTest` (4 assertions) passes. All 150 prior tests pass. `mvn --offline clean test` exits 0.
+- Manual demo: launch frontend, start new game.
+  - Navigate to Reading Hall: count the bookshelf silhouettes — there are exactly 8.
+  - Navigate to Entry Foyer: look at the arched doorframe area — 3 small brass dots are visible near the arch top, subtly placed but individually countable.
+  - Navigate to Archives: 4 cabinet silhouettes unchanged; filing cabinet drawer faces unchanged.
+
+---
+
+### UI-M7 — Examination Hint Cards (Option B)
+
+**Goal.** Four object interactions display a centered `BufferedImage` overlay ("hint card") on `ScenePanel` that auto-fades after ~2 seconds. `AssetManager` gains a backward-compatible `getHintCard()` default method. `ProceduralAssetManager` renders four distinct cards. `ScenePanel` gains hint card overlay infrastructure (image, alpha, hold-then-fade timer). `MainFrame` wires all four triggers: `wall_clock` first-click shows the clock-face card and delays the riddle dialog by 1.5s; SCENERY objects (`reception_desk`, `reading_lamp`, `filing_cabinets`) show their card alongside the server's dialogue text on every examine.
+
+**North-star tie.** Completes the visual hint system. After this milestone a player who examines objects sees a close-up procedural drawing that confirms they have found something countable (or, for the clock, shows the HH:MM format). The challenge is preserved: the clock card never shows the time; the counting cards have no label.
+
+**Pre-conditions.** UI-M6 complete.
+
+**Red — write these tests first.**
+
+`ScenePanelHintCardTest.java` (new):
+- Construct `ScenePanel` with `PlaceholderAssetManager`; call `showHintCard(new BufferedImage(320, 200, BufferedImage.TYPE_INT_ARGB))` — assert `isHintCardVisible()` returns `true` immediately
+- Assert `getHintCardAlpha()` returns `1.0f` immediately after `showHintCard`
+- Assert `hintCardTimer.isRunning()` returns `true` immediately after `showHintCard`
+- Call `showHintCard` twice in a row — second call resets state cleanly; `hintCardTimer.isRunning()` is `true` (timer stopped-and-restarted, not doubled)
+
+`ProceduralAssetManagerHintCardTest.java` (new):
+- `getHintCard("wall_clock")` returns non-null, casts to `BufferedImage`, width 320, height 200, type `TYPE_INT_ARGB`
+- Same assertions for `"reception_desk"`, `"reading_lamp"`, `"filing_cabinets"` (4 cards total)
+- Clock card and nails card are not pixel-identical: center pixel (160, 100) differs between the two
+- `getHintCard("unknown_object")` returns non-null 320×200 ARGB image — graceful fallback, no exception
+
+`MainFrameHintCardPreRenderTest.java` (new):
+- Construct `MainFrame` with `ProceduralAssetManager` and a no-op `GameApiClient` stub
+- Access `getHintCardImages()` (package-private accessor) — assert map contains exactly 4 keys: `"wall_clock"`, `"reception_desk"`, `"reading_lamp"`, `"filing_cabinets"`
+- Access `getShownHintCards()` (package-private accessor) — assert set is empty at construction
+
+**Green.**
+
+`AssetManager.java` — add one `default` method. All existing implementations require zero changes:
+```java
+default java.awt.Image getHintCard(String objectId) {
+    return new java.awt.image.BufferedImage(1, 1,
+            java.awt.image.BufferedImage.TYPE_INT_ARGB);
+}
+```
+
+`ProceduralAssetManager.java` — add `@Override public java.awt.Image getHintCard(String objectId)`:
+- `switch(objectId)` with cases `"wall_clock"`, `"reception_desk"`, `"reading_lamp"`, `"filing_cabinets"` per card specs in `design_ui_upgrade.md §10.3`
+- Default: return blank 320×200 `TYPE_INT_ARGB` image
+- All colors via `ThemeConstants.*`; `g2.create()/dispose()`; antialiasing on
+
+`FileAssetManager.java` — add one override that delegates:
+```java
+@Override
+public java.awt.Image getHintCard(String objectId) {
+    return fallback.getHintCard(objectId);
+}
+```
+
+`ScenePanel.java` — add hint card overlay per `design_ui_upgrade.md §10.7`:
+- Fields: `private BufferedImage hintCardImage = null`, `private float hintCardAlpha = 0.0f`, `private int hintCardTicks = 0`, `final Timer hintCardTimer` (package-private)
+- `hintCardTimer` (16ms): tick body increments `hintCardTicks`; once `> 125` (≈2s hold), decrements α by 0.05f per tick; at α ≤ 0 nulls image and stops timer; uses `((Timer) e.getSource()).stop()` pattern (no self-reference)
+- `public void showHintCard(BufferedImage image)`: assigns image, sets α=1.0f, resets ticks=0, stops-then-starts timer
+- `paintComponent()`: after hotspot loop, before `g2.dispose()`, draw centered 320×200 card if visible
+- Package-private accessors: `float getHintCardAlpha()`, `boolean isHintCardVisible()`
+
+`MainFrame.java` — add trigger logic per `design_ui_upgrade.md §10.8`:
+- Fields: `private final Map<String, BufferedImage> hintCardImages` (built in constructor from `assetManager.getHintCard()` for all 4 IDs); `private final Set<String> shownHintCards = new HashSet<>()`
+- Package-private accessors for tests: `Map<String, BufferedImage> getHintCardImages()`, `Set<String> getShownHintCards()`
+- PUZZLE branch in `handleHotspotClick`: if `!shownHintCards.contains(oid) && hintCardImages.containsKey(oid)` → add to `shownHintCards`, call `scenePanel.showHintCard(...)`, start one-shot `Timer(1500, …)` with `setRepeats(false)` that calls `handlePuzzleClick(capturedObj)`, return
+- After `applyState(client.examine(…))`: if `hintCardImages.containsKey(hotspot.getObjectId())` → call `scenePanel.showHintCard(...)`
+- `shownHintCards.clear()` in `handleNewGame()` and `handleLoad()` success paths
+
+**Refactor.** If any hint card drawing case exceeds 20 lines, extract a private helper (`paintWallClockCard(Graphics2D)` etc.) to keep `getHintCard`'s `switch` readable. All helpers remain private to `ProceduralAssetManager`.
+
+**Acceptance.**
+
+- Automated: `ScenePanelHintCardTest` (4 assertions) + `ProceduralAssetManagerHintCardTest` (6 assertions) + `MainFrameHintCardPreRenderTest` (3 assertions) pass. All prior tests pass. `mvn --offline clean test` exits 0.
+- Manual demo (backend running):
+  - Examine `reception_desk`: server dialogue text appears in dialogue panel AND a centered card overlay appears in the scene with 3 brass circles in a doorframe; card auto-fades after ~2s
+  - Examine `reading_lamp`: card shows 8 book-spine rectangles side-by-side; count them
+  - Examine `filing_cabinets`: card shows 4 distinct drawer-row sections with brass handles
+  - Click `wall_clock` (first time in session): clock face card appears showing Roman numeral ticks and two blurred non-directional hand smears; after ~1.5s the riddle dialog opens automatically; no readable specific time on the card
+  - Click `wall_clock` (second time, same session): no card — riddle dialog opens immediately
+  - Solve the wall clock, start a New Game, click `wall_clock` again → card reappears (shownHintCards cleared on new game)
+  - Load a save, click `wall_clock` → card reappears (shownHintCards cleared on load)
+
+**Final hint system acceptance gate** — walk `design_ui_upgrade.md §9 "Visual — hint system"` checklist fully:
+- [ ] All 11 hint system acceptance items green
+- [ ] `mvn --offline clean test` exits 0 with all tests (150 + ~15 new) passing
+- [ ] No backend files changed: `git diff main -- backend/` is empty
+- [ ] No `world.json` changes: `git diff main -- backend/src/main/resources/world.json` is empty
+- [ ] No new Maven dependencies: `git diff main -- '*/pom.xml'` is empty
+
+---
+
 ## 7. Risk Register
 
 | Risk | Mitigation | Milestone |
@@ -562,6 +707,12 @@ Play through the complete `idea.md §3` golden path from click 1 to the win scre
 | `PuzzleDotsPanel` not repainting on `setSolvedCount` | Test asserts `repaint()` contract via stored field; manual demo visually confirms | UI-M4 |
 | Null `solvedPuzzleIds` NPE on new-game response | `MainFrameApplyStateNullSafetyTest` covers this; null-guard in `applyState()` | UI-M2 |
 | `ProceduralAssetManager` structural coordinates misaligned with hotspot positions (M3) | Known and accepted: backgrounds are 800×500 and stretched; hotspots are dynamically laid out; silhouettes are decorative, not precise. No acceptance criterion requires pixel alignment. | UI-M3 |
+| Nail circle test coordinate is inside gradient glow, not NIGHT_BLACK, making the "not NIGHT_BLACK" assertion vacuously true | Pick coordinates in the nail circle center (≈(207,140)) rather than the outer doorframe; verify the pixel is specifically `AGED_BRASS` rather than just "not NIGHT_BLACK" if the assertion proves flaky | UI-M6 |
+| Bookshelf 8 test coordinate is inside the ambient gradient (also not NIGHT_BLACK) | Use a coordinate in the mid-height of shelf 8 (y≈200) where the gradient is near-black; assert the pixel is darker than `#2A1A08` (gradient max) — bookshelf fill `#1A0F04` is noticeably darker | UI-M6 |
+| `AssetManager.getHintCard()` default method breaks test stubs that explicitly implement every method | Default method provides a fallback automatically — stubs compile without changes. Verified by running all existing tests in Green step before committing. | UI-M7 |
+| Hint card timer and crossfade timer fire simultaneously (both timers running during room change + hint card show) | Independent timers; each controls its own alpha field and repaint. `paintComponent` draws them in distinct layers — crossfade affects background alpha; card is drawn after hotspots at full opacity. No shared state. | UI-M7 |
+| `wall_clock` one-shot delay timer fires after the modal dialog has already been dismissed by another action | One-shot timer is scoped to a single click; `capturedObj` is effectively final; `handlePuzzleClick` is idempotent — calling it after the dialog was already shown just opens another dialog. Acceptable: player pressed the hotspot intentionally. | UI-M7 |
+| `hintCardImages` map build fails if `assetManager.getHintCard()` returns non-`BufferedImage` | `instanceof BufferedImage bi` pattern match silently skips non-BufferedImage returns; `PlaceholderAssetManager` default returns a `BufferedImage`; `ProceduralAssetManager` always returns `BufferedImage`. No runtime failure path. | UI-M7 |
 
 ---
 
@@ -582,8 +733,13 @@ Play through the complete `idea.md §3` golden path from click 1 to the win scre
 | `CombinationPuzzleDialog.java` | UI-M5 | Parchment spinner styling |
 | `RiddlePuzzleDialog.java` | UI-M5 | Parchment text field styling |
 | `SequencePuzzleDialog.java` | UI-M5 | Promote `list` to field; add `getList()` accessor; dark list styling + styled buttons |
+| `AssetManager.java` | UI-M7 | Minor: add `default getHintCard(String)` method (backward-compatible) |
+| `ProceduralAssetManager.java` | UI-M6 + UI-M7 | UI-M6: 8 bookshelves + 3 nail circles; UI-M7: `getHintCard()` for 4 object IDs |
+| `FileAssetManager.java` | UI-M7 | Minor: override `getHintCard()` to delegate to fallback |
+| `ScenePanel.java` | UI-M7 | Hint card overlay fields + `showHintCard()` + `hintCardTimer` + `paintComponent()` card layer |
+| `MainFrame.java` | UI-M7 | `hintCardImages` map + `shownHintCards` set + PUZZLE first-click delay + SCENERY examine trigger + clear on new-game/load |
 
-Zero backend files changed. Zero `pom.xml` files changed.
+Zero backend files changed. Zero `pom.xml` files changed. Zero `world.json` changes.
 
 ---
 
@@ -595,8 +751,8 @@ Zero backend files changed. Zero `pom.xml` files changed.
 4. **Run the acceptance gate**: `mvn --offline clean test` from repo root must exit 0.
 5. **Run the manual demo** documented for that milestone.
 6. **Commit** with the milestone tag: `feat(UI-M1): ThemeConstants + ProceduralAssetManager`.
-7. After UI-M5, merge `ui-improvement` into `main`.
+7. After UI-M7, merge `ui-improvement` into `main`.
 
 ---
 
-**End of plan_ui_upgrade.md.** Awaiting plan review approval before UI-M1 begins.
+**End of plan_ui_upgrade.md.** UI-M1–M5 complete. UI-M6–M7 awaiting plan review approval before build begins.

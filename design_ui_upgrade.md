@@ -1,8 +1,8 @@
 # UI Upgrade Design — Thornwick Visual Overhaul
 
 **Branch:** `ui-improvement`  
-**Status:** Architecture-reviewed — fixes applied  
-**Scope:** Swing frontend only. Zero backend changes. Zero AP CS rubric removals.
+**Status:** Architecture-reviewed — Phase 1 (UI-M1–M5) complete; Phase 2 (UI-M6–M7, hint system) design-reviewed  
+**Scope:** Swing frontend only. Zero backend changes. Zero world.json changes. Zero AP CS rubric removals.
 
 ---
 
@@ -389,17 +389,27 @@ This is significantly better than the current solid-color oval. It is also a cle
 | `MainFrame.java` | Pass `assetManager` to `InventoryPanel`; null-safe `solvedIds` set; `buildHotspots(solvedIds)` signature; window size |
 | `FileAssetManager.java` | One-line change: fallback field `new PlaceholderAssetManager()` → `new ProceduralAssetManager()` |
 
+### UI-M6 + UI-M7 additions (hint system)
+
+| File | Change Type |
+|------|-------------|
+| `AssetManager.java` | **MINOR** — add `default getHintCard(String)` method; backward-compatible (default returns blank image) |
+| `ProceduralAssetManager.java` | **EXTEND** — `getHintCard()` for 4 object IDs; reading hall 8 bookshelves; foyer 3 nail heads |
+| `FileAssetManager.java` | **MINOR** — override `getHintCard()` to delegate to fallback |
+| `ScenePanel.java` | **EXTEND** — `hintCardImage/Alpha/Ticks/Timer` fields; `showHintCard()`; overlay in `paintComponent()` |
+| `MainFrame.java` | **EXTEND** — `hintCardImages` map; `shownHintCards` set; PUZZLE first-click delay; SCENERY examine card trigger; clear on new-game/load |
+
 ### NOT Changed
 
 | File | Reason |
 |------|--------|
 | All `backend/` source | Backend is complete; zero backend changes this phase |
+| `world.json` | No data changes; hint counts already match room descriptions |
 | `GameApiClient.java` | HTTP client, no UI concern |
-| `AssetManager.java` | Interface is correct and sufficient |
-| `PlaceholderAssetManager.java` | Fallback still needed by tests; left as-is |
+| `PlaceholderAssetManager.java` | Fallback needed by tests; default `getHintCard()` method requires zero changes here |
 | `EscapeRoomApp.java` | Entry point, no change |
 | All `dto/` classes | Data contracts, no change |
-| All test files | Must pass unchanged (except `HotspotTest` if it needs new constructor) |
+| All test files | Must pass unchanged (new tests added; existing tests untouched) |
 
 ---
 
@@ -462,4 +472,264 @@ This is significantly better than the current solid-color oval. It is also a cle
 **Constraints**
 - [ ] No new Maven dependencies added to any `pom.xml`
 - [ ] No backend source files modified
-- [ ] `PlaceholderAssetManager` unchanged (tests depend on it)
+- [ ] No `world.json` modifications
+- [ ] `PlaceholderAssetManager` unchanged (default `getHintCard()` on interface covers it)
+
+**Visual — hint system (UI-M6 + UI-M7)**
+- [ ] Reading Hall art shows exactly 8 countable bookshelf silhouettes (manually count them)
+- [ ] Foyer art shows 3 small brass-coloured circles near the arched doorframe (countable)
+- [ ] Examining `reception_desk` shows a centered card overlay with 3 drawn nail heads; card fades after ~2 seconds; server dialogue text also appears normally
+- [ ] Examining `reading_lamp` shows a card with 8 book-spine rectangles side-by-side
+- [ ] Examining `filing_cabinets` shows a card with 4 distinct drawer-row sections
+- [ ] First click on `wall_clock` shows a clock face card for ~1.5 seconds, then the riddle dialog opens
+- [ ] Clock face card shows Roman numeral tick marks and two blurred/non-directional hand smears — no readable specific time is visible
+- [ ] Second click on `wall_clock` (same game session) skips the card and opens the dialog immediately
+- [ ] Starting a New Game clears the shown-hints set (wall_clock card reappears on first click in new game)
+- [ ] Loading a save clears the shown-hints set
+- [ ] All 150 existing tests still pass after hint system additions (`mvn --offline clean test` exits 0)
+
+---
+
+## 10. Visual Hint System (UI-M6 + UI-M7)
+
+### 10.1 Design Principles
+
+**Challenge guarantee:** Hints are CONFIRMATORY, not REVEALING. A player who notices the visual cues gets help *finding* the right object to look at; they still need to count across three rooms and connect the numbers to the three-dial combination. The clock card communicates answer *format* (HH:MM) but never the time itself — the riddle still does the heavy lifting.
+
+**Two-path discovery:** The existing room description text already contains the counts ("3 brass nails", "Eight tall bookshelves", "4 long rows"). The visual hints provide a parallel path for players who absorb the art before they read. Neither path is sufficient alone without the puzzle mechanic.
+
+**Scope boundary:** Zero backend changes. Zero `world.json` changes. No new Maven dependencies. All new art rendered by `ProceduralAssetManager` using existing `java.awt.*` primitives.
+
+---
+
+### 10.2 Option A — Room Art Counting Clues
+
+Changes to `ProceduralAssetManager` structural silhouettes only. All other room layers unchanged.
+
+#### Foyer — 3 brass nail heads
+
+Add 3 small filled circles in `AGED_BRASS`, diameter 5px, positioned near the top of the arched doorframe at approximately (192, 145), (207, 140), (222, 148). Slightly irregular spacing and Y-offset for a hand-driven look. These represent the "3 brass nails set into the door frame" from the room description. They are small enough to require noticing, but distinct enough to count once seen.
+
+#### Reading Hall — 8 bookshelf silhouettes
+
+Change the bookshelf count from **5 to 8**. Recalculate spacing so all 8 fit the 800px width:
+
+```
+int shelfW = 72;
+int gap = (800 - 8 * shelfW) / 9;   // ≈ 24px
+for (int i = 0; i < 8; i++) {
+    int sx = gap + i * (shelfW + gap);
+    g2.fillRect(sx, 50, shelfW, 360);
+}
+```
+
+Color, height, and all other drawing attributes unchanged. The increase from 5 to 8 aligns the art with the room description ("Eight tall bookshelves") and the combination digit.
+
+#### Archives — 4 filing cabinets (no change needed)
+
+The existing 4 cabinet silhouettes already match the "4 long rows" hint. No change required.
+
+---
+
+### 10.3 Option B — Examination Hint Cards
+
+#### Card concept
+
+A hint card is a procedurally-drawn `BufferedImage(320, 200, TYPE_INT_ARGB)` displayed as a centered overlay on `ScenePanel`. It appears at full opacity (α = 1.0), holds for ~2 seconds (≈125 ticks at 16ms), then fades out (α decrements 0.05 per tick). Uses a single `javax.swing.Timer` — same infrastructure as the room crossfade.
+
+#### Trigger mapping
+
+| Object ID | Object type | Trigger event | Card shown |
+|-----------|------------|---------------|-----------|
+| `wall_clock` | PUZZLE | First click on hotspot | Clock face (format hint) |
+| `reception_desk` | SCENERY | Player examines via `client.examine()` | 3 brass nails |
+| `reading_lamp` | SCENERY | Player examines via `client.examine()` | 8 bookshelf spines |
+| `filing_cabinets` | SCENERY | Player examines via `client.examine()` | 4 filing rows |
+
+`wall_clock` shows its card **once per game session only** (tracked by `Set<String> shownHintCards` in `MainFrame`; cleared on New Game and Load). After the card is shown, a 1.5s one-shot `Timer(1500, …, setRepeats(false))` fires and opens the riddle dialog. Subsequent clicks on `wall_clock` skip the card and open the dialog immediately.
+
+SCENERY hint cards appear **alongside** the server dialogue text — `applyState()` runs first, card overlay is shown after. Cards show every time the player examines that object (no once-only restriction for SCENERY).
+
+#### Card drawing specifications
+
+All cards: 320×200 `TYPE_INT_ARGB`, antialiasing on, `g2.create()/dispose()`, dark fill `DARK_WOOD` as base, thin `AGED_BRASS` 1.5px border stroked around the perimeter.
+
+**`wall_clock` card — Clock face (format hint):**
+- Large circle stroke in `AGED_BRASS` 2px, centered at (160, 95), radius 70px
+- 12 Roman numeral tick marks: short lines (8px) in `CANDLE_TEXT` at 30° increments from the circle edge, pointing inward
+- Two "hand" smears: short radial strokes in `DIM_TEXT` 3px, drawn at two arbitrary angles (e.g., 315° and 90° from top), length 40px and 55px — deliberately not aligned to any specific time
+- Label "H H : M M" in `BRASS_GLOW`, `FONT_SMALL`, centered at (160, 180) — communicates answer format without revealing value
+
+**`reception_desk` card — 3 brass nails:**
+- Doorframe section: two vertical lines in `#1A0F04` at x=100 and x=220, from y=20 to y=160; arched top connecting them (`Arc2D.OPEN` from (100, 20) to (220, 20), apex at (160, -10))
+- 3 filled circles in `AGED_BRASS`, diameter 8px, at approximately (130, 70), (158, 60), (188, 68) — non-uniform spacing along the arch
+- No label; counting is the task
+
+**`reading_lamp` card — 8 bookshelf spines:**
+- 8 vertical rectangles (w=22, h=80) in `#1A0F04` with 3px gaps, centered horizontally starting at x=28, y=60
+- Each spine has a slightly different height variation (±5px random-feeling offset, use deterministic values baked in: heights [78,82,76,80,77,83,79,81]) for a natural book-row look
+- Each spine gets a 1px top line in `DIM_TEXT` (top-of-spine detail)
+- No label; player counts
+
+**`filing_cabinets` card — 4 filing rows:**
+- 4 rectangle cabinet faces (w=56, h=100) with 6px gaps, starting at x=18, y=50; all in `#1A0F04`
+- Each cabinet: 3 horizontal lines dividing it into 4 drawer sections (lines at y+25, y+50, y+75 relative to cabinet top)
+- Each drawer face: one small filled rect in `AGED_BRASS` (w=18, h=4) centered horizontally — the drawer handle
+- No label
+
+---
+
+### 10.4 `AssetManager.java` — interface change
+
+Add one `default` method so all existing implementations (`PlaceholderAssetManager`, test stubs) require zero changes:
+
+```java
+default java.awt.Image getHintCard(String objectId) {
+    return new java.awt.image.BufferedImage(1, 1,
+            java.awt.image.BufferedImage.TYPE_INT_ARGB);
+}
+```
+
+The default returns a 1×1 blank image, which `ScenePanel` will never visibly render (since `MainFrame` only passes known card images). `ProceduralAssetManager` overrides with real art. `FileAssetManager` overrides to delegate to its `fallback`.
+
+---
+
+### 10.5 `ProceduralAssetManager.java` — hint card additions
+
+Add `@Override public java.awt.Image getHintCard(String objectId)`:
+
+```
+switch(objectId) {
+    case "wall_clock"     → draw clock face card (§10.3)
+    case "reception_desk" → draw nails card (§10.3)
+    case "reading_lamp"   → draw bookshelves card (§10.3)
+    case "filing_cabinets"→ draw cabinets card (§10.3)
+    default               → return blank 320×200 ARGB image
+}
+```
+
+All colors via `ThemeConstants.*`. No hardcoded hex. Draw order per card: base fill → border → structural shapes → detail shapes → label (if any).
+
+---
+
+### 10.6 `FileAssetManager.java` — delegate hint card
+
+Add `@Override public java.awt.Image getHintCard(String objectId)` that delegates to the existing `fallback` field:
+
+```java
+@Override
+public java.awt.Image getHintCard(String objectId) {
+    return fallback.getHintCard(objectId);
+}
+```
+
+No PNG file override path needed for hint cards (they are purely procedural).
+
+---
+
+### 10.7 `ScenePanel.java` — hint card overlay infrastructure
+
+New fields (all package-private for test access):
+
+```java
+private BufferedImage hintCardImage = null;
+private float hintCardAlpha = 0.0f;
+private int hintCardTicks = 0;
+final Timer hintCardTimer;
+```
+
+`hintCardTimer` initialized in constructor (16ms interval):
+```java
+hintCardTimer = new Timer(16, e -> {
+    hintCardTicks++;
+    if (hintCardTicks > 125) {           // 2s hold before fade begins
+        hintCardAlpha = Math.max(0.0f, hintCardAlpha - 0.05f);
+        if (hintCardAlpha <= 0.0f) {
+            hintCardImage = null;
+            ((Timer) e.getSource()).stop();
+        }
+    }
+    repaint();
+});
+```
+
+New public method:
+```java
+public void showHintCard(BufferedImage image) {
+    hintCardImage = image;
+    hintCardAlpha = 1.0f;
+    hintCardTicks = 0;
+    if (hintCardTimer.isRunning()) hintCardTimer.stop();
+    hintCardTimer.start();
+    repaint();
+}
+```
+
+In `paintComponent()`, after the hotspot loop, before `g2.dispose()`:
+```java
+if (hintCardImage != null && hintCardAlpha > 0.0f) {
+    int cw = 320, ch = 200;
+    int cx = (getWidth() - cw) / 2;
+    int cy = (getHeight() - ch) / 2;
+    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, hintCardAlpha));
+    g2.drawImage(hintCardImage, cx, cy, cw, ch, this);
+    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+}
+```
+
+New package-private accessors for tests:
+```java
+float getHintCardAlpha() { return hintCardAlpha; }
+boolean isHintCardVisible() { return hintCardImage != null && hintCardAlpha > 0.0f; }
+```
+
+---
+
+### 10.8 `MainFrame.java` — hint trigger logic
+
+New fields:
+```java
+private final Map<String, BufferedImage> hintCardImages;
+private final Set<String> shownHintCards = new HashSet<>();
+```
+
+Pre-render all four hint card images at construction time (while `assetManager` parameter is in scope, immediately after all panels are constructed):
+```java
+Map<String, BufferedImage> cards = new HashMap<>();
+for (String oid : List.of("wall_clock", "reception_desk", "reading_lamp", "filing_cabinets")) {
+    java.awt.Image img = assetManager.getHintCard(oid);
+    if (img instanceof BufferedImage bi) cards.put(oid, bi);
+}
+this.hintCardImages = Collections.unmodifiableMap(cards);
+```
+
+**PUZZLE hotspot hint (wall_clock first-click delay):**
+In `handleHotspotClick`, inside the `"PUZZLE".equals(hotspot.getType())` branch, before delegating to `handlePuzzleClick`:
+```java
+String oid = hotspot.getObjectId();
+if (!shownHintCards.contains(oid) && hintCardImages.containsKey(oid)) {
+    shownHintCards.add(oid);
+    scenePanel.showHintCard(hintCardImages.get(oid));
+    RoomObjectDTO capturedObj = roomObjectsByHotspotId.get(oid);
+    Timer delay = new Timer(1500, e -> {
+        ((Timer) e.getSource()).stop();
+        if (capturedObj != null) handlePuzzleClick(capturedObj);
+    });
+    delay.setRepeats(false);
+    delay.start();
+    return;
+}
+```
+
+**SCENERY examine hint (reception_desk, reading_lamp, filing_cabinets):**
+In `handleHotspotClick`, after `applyState(client.examine(gameId, hotspot.getObjectId()))` (inside the existing try-catch):
+```java
+if (hintCardImages.containsKey(hotspot.getObjectId())) {
+    scenePanel.showHintCard(hintCardImages.get(hotspot.getObjectId()));
+}
+```
+
+**Clear on new game and load** (in `handleNewGame()` and `handleLoad()` success path):
+```java
+shownHintCards.clear();
+```

@@ -100,22 +100,26 @@ public class ProceduralAssetManager implements AssetManager {
 
         // Reception desk rect
         g2.fillRect(80, 340, 200, 80);
+
+        // Brass nail heads near arched doorframe
+        g2.setColor(ThemeConstants.AGED_BRASS);
+        int[] nailX = {192, 207, 222};
+        int[] nailY = {145, 140, 148};
+        for (int i = 0; i < 3; i++) {
+            g2.fillOval(nailX[i] - 2, nailY[i] - 2, 5, 5);
+        }
     }
 
     private void paintReadingHallSilhouettes(Graphics2D g2) {
         Color silhouette = new Color(0x1A, 0x0F, 0x04);
         g2.setColor(silhouette);
 
-        // Five bookshelf columns evenly spaced
-        int[] shelfX = {20, 160, 300, 490, 640};
-        for (int x : shelfX) {
-            g2.fillRect(x, 50, 100, 360);
-            // Horizontal shelf lines
-            g2.setColor(new Color(0x28, 0x18, 0x08));
-            for (int y = 120; y < 410; y += 70) {
-                g2.fillRect(x + 2, y, 96, 4);
-            }
-            g2.setColor(silhouette);
+        // Eight bookshelf columns evenly spaced
+        int shelfW = 72;
+        int gap = (800 - 8 * shelfW) / 9;
+        for (int i = 0; i < 8; i++) {
+            int sx = gap + i * (shelfW + gap);
+            g2.fillRect(sx, 50, shelfW, 360);
         }
 
         // Fireplace opening (arch rect)
