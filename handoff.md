@@ -96,10 +96,11 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
 | M6 — Inventory + Pickup | ✅ DONE | `POST /pickup`, `InventoryService.addItem/hasItem/removeItem`, 409 on non-pickupable/already held |
 | M7 — Puzzle Evaluation: Combo + Riddle | ✅ DONE | `PuzzleEvaluationService`, `POST /attempt-puzzle`, prereq check, idempotent reward |
 | M8 — Sequence + ItemUse + Win ★ | ✅ DONE | `POST /use-item`, win condition, 75 backend tests |
-| **M9 — Save / Load** | ⬅ **NEXT** | `SaveLoadService`, File I/O rubric demo |
-| M10–M14 — Swing Frontend | pending | M10: skeleton; M13: north-star clicks ★ |
+| M9 — Save / Load | ✅ DONE | `SaveLoadService`, File I/O rubric, 86 backend tests |
+| **M10 — Swing Skeleton** | ⬅ **NEXT** | `EscapeRoomApp`, `MainFrame`, `GameApiClient`, `ScenePanel` stub |
+| M11–M14 — Swing Frontend | pending | M11: ScenePanel+Inventory; M13: north-star clicks ★ |
 
-**Test count as of M8:** 75 backend tests, 1 frontend sanity test. All green.
+**Test count as of M9:** 86 backend tests, 1 frontend sanity test. All green.
 
 ---
 
@@ -118,8 +119,8 @@ backend/src/main/java/com/abhishri/escape/
 │   ├── HealthController.java           GET /api/health
 │   └── GameController.java             POST /new, GET /{id}, POST /{id}/move,
 │                                       POST /{id}/examine, POST /{id}/pickup,
-│                                       POST /{id}/attempt-puzzle,
-│                                       POST /{id}/use-item
+│                                       POST /{id}/attempt-puzzle, POST /{id}/use-item,
+│                                       POST /{id}/save, POST /{id}/load, GET /{id}/saves
 ├── domain/
 │   ├── GameSession.java, GameStatus.java, PlayerInventory.java
 │   ├── Room.java, RoomObject.java (@Embeddable), ObjectType.java (enum), InventoryItem.java
@@ -135,12 +136,14 @@ backend/src/main/java/com/abhishri/escape/
 │   ├── MoveRequest.java, ExamineRequest.java, PickupRequest.java
 │   ├── AttemptPuzzleRequest.java
 │   ├── UseItemRequest.java
-│   └── [SaveRequest / LoadRequest added in M9]
+│   ├── LoadRequest.java, SaveConfirmationDTO.java, SaveMetadataDTO.java
+│   └── GameSnapshotDTO.java
 ├── exception/
 │   ├── ApiErrorCode.java (enum), GlobalExceptionHandler.java
 │   ├── GameNotFoundException.java, InvalidMoveException.java
 │   ├── PuzzleNotFoundException.java, PrerequisiteNotMetException.java
-│   └── ItemNotInInventoryException.java
+│   ├── ItemNotInInventoryException.java
+│   └── SaveLoadException.java
 ├── repository/
 │   └── GameSessionRepository, RoomRepository, PuzzleRepository,
 │       PlayerInventoryRepository, InventoryItemRepository
@@ -148,9 +151,9 @@ backend/src/main/java/com/abhishri/escape/
     ├── GameSessionService.java         createNewGame, getState, buildStateDTO,
     │                                   move, examine, pickup
     ├── InventoryService.java           snapshot, addItem, hasItem, removeItem
-    ├── PuzzleEvaluationService.java    attempt, useItem
-    ├── WorldSeedService.java + WorldSeedValidator.java
-    └── [SaveLoadService added in M9]
+    ├─�� PuzzleEvaluationService.java    attempt, useItem
+    ├── SaveLoadService.java            save, load, listSaves
+    └── WorldSeedService.java + WorldSeedValidator.java
 
 backend/src/main/resources/
 ├── application.properties
@@ -166,50 +169,44 @@ frontend/  — empty stubs only (M10+)
 
 ---
 
-## 7. What M9 Must Build
+## 7. What M10 Must Build
 
-**File I/O rubric demo — `SaveLoadService` writes and reads JSON snapshots to `./saves/`.**
+**Goal:** `mvn -pl frontend exec:java` opens a Swing window with a placeholder foyer. No backend connection — window works even with backend down.
 
-**Red tests first (per plan.md §M9):**
+**Red tests first (per plan.md §M10):**
 
-*Unit:*
-- `saveGame_writesJsonFileToSavesDir`: call `saveGame(gameId)`, assert file exists at `./saves/{gameId}.json`
-- `saveGame_fileContainsMutableStateOnly`: assert saved JSON has `gameId`, `currentRoomId`, `status`,
-  `solvedPuzzleIds`, `heldItemIds` — and does NOT contain room names, puzzle descriptions, etc.
-- `loadGame_readsFileAndRestoresSession`: write a known snapshot file, call `loadGame(gameId)`,
-  assert `GameSession` fields match the file content
-- `loadGame_missingFile_throwsSaveNotFoundException`
-- `saveAndLoad_roundTrip_sessionFieldsMatch`: save then load, assert round-trip equality of all mutable fields
-
-*Integration:*
-- `SaveLoadIntegrationTest.saveGame_returnsLastActionResultSaved`
-- `SaveLoadIntegrationTest.loadGame_restoresInventoryAndSolvedPuzzles`
-- `SaveLoadIntegrationTest.loadGame_unknownGameId_returns404`
+- `MainFrameSmokeTest`: `SwingUtilities.invokeAndWait(() -> new MainFrame(...).setVisible(true))`,
+  assert `frame.isVisible()`, `frame.getContentPane().getComponentCount() == 4`
+  (StatusBar north, ScenePanel center, InventoryPanel east, DialoguePanel south)
 
 **Green:**
-- `SaveSnapshotDTO` (plain POJO, no JPA): `gameId`, `currentRoomId`, `status`, `createdAt`,
-  `lastUpdatedAt`, `solvedPuzzleIds`, `heldItemIds`
-- `SaveLoadService.saveGame(UUID gameId)` → writes `./saves/{gameId}.json` via `ObjectMapper.writeValue`
-- `SaveLoadService.loadGame(UUID gameId)` → reads `./saves/{gameId}.json`, rebuilds `GameSession`
-  (updates existing or creates new), returns `GameStateDTO`
-- `SaveNotFoundException` + 404 handler in `GlobalExceptionHandler` (error code `SAVE_NOT_FOUND` if
-  enum has it, else reuse `GAME_NOT_FOUND`)
-- `GameController` endpoints: `POST /{gameId}/save`, `POST /{gameId}/load`
-- `LastActionResult.SAVED` and `LastActionResult.LOADED` are already in the enum — no change needed
-- `./saves/` directory: create at startup in `SaveLoadService` via `Files.createDirectories`
-- `application.properties`: add `escape.saves.dir=./saves` (already present in `design.md §13a`)
-- `application-test.properties`: add `escape.saves.dir=./target/test-saves` (isolated from prod)
 
-**Important — File I/O rubric coverage:**  
-`SaveLoadService` uses `java.io.File` or `java.nio.file.Files` (or both) to read/write JSON — this is
-the canonical AP CS File I/O demonstration. Prefer `Files.writeString` / `Files.readString` over streams
-for simplicity at AP CS level.
+- `EscapeRoomApp.java` — `main()` calls `SwingUtilities.invokeLater(() -> new MainFrame(...).setVisible(true))`
+- `MainFrame extends JFrame` — `BorderLayout`, four panels, `WindowAdapter` for clean close.
+  Renders hardcoded placeholder foyer (no API call yet)
+- `ScenePanel extends JPanel` — `paintComponent` draws background via `AssetManager.getBackground(roomId)`,
+  then iterates `List<Hotspot>` drawing labeled rectangles
+- `InventoryPanel extends JPanel` — `JList<InventoryItemDTO>` placeholder (empty model)
+- `DialoguePanel extends JPanel` — `JTextArea` (non-editable, wrapped in `JScrollPane`)
+- `StatusBar extends JPanel` — `JLabel` room name + Save/Load/New `JButton`s (no listeners yet)
+- `AssetManager` interface — `Image getBackground(String roomId)`, `Image getItemIcon(String assetKey)`
+- `PlaceholderAssetManager implements AssetManager` — returns a colored rectangle painted on a
+  `BufferedImage` (no PNG required); ships as the default implementation
+- `Hotspot` POJO — `id`, `type` (String from `ObjectType`), `label`, `bounds` (Rectangle), `objectId`
 
-**`design.md §6`** has the REST contract for save/load endpoints. Check it before implementing.
+**Important notes:**
+- `frontend/pom.xml` already exists (or exists as a stub from M0). Check if Jackson + JUnit 5 are present.
+  If not, add them: `jackson-databind`, `jackson-datatype-jsr310`, `junit-jupiter`. The `exec-maven-plugin`
+  target `com.abhishri.escape.ui.EscapeRoomApp` must be configured.
+- Frontend packages root: `com.abhishri.escape.ui`
+- DTOs duplicated from backend (`GameStateDTO`, `RoomDTO`, `InventoryItemDTO`, `RoomObjectDTO`,
+  `LastActionResult`) — kept in `com.abhishri.escape.ui.dto` (intentional, per `idea.md §8`)
+- `MainFrameSmokeTest` must use `SwingUtilities.invokeAndWait` because Swing is not thread-safe.
+  Use `GraphicsEnvironment.isHeadless()` as a guard if running in CI without a display.
+- The `GameApiClient` stub (constructor + fields only, no methods yet) is acceptable in M10;
+  full implementation lands in M11.
 
-**Gotcha:** `world-test.json` and `world.json` both define the _static_ world. Saves contain only the
-_mutable_ session state. When loading, the service must merge: update the existing `GameSession` in H2
-(or create if missing), but never overwrite `Room`/`Puzzle`/`InventoryItem` tables.
+**Rubric:** GUI concept — every panel, every button, every `paintComponent` override counts.
 
 ---
 
@@ -238,7 +235,7 @@ _mutable_ session state. When loading, the service must merge: update the existi
 ```
 git remote: git@github.com:avishekdas/game-java-sample.git
 branch: main
-last commit: feat(M8): sequence + item-use puzzles + win condition
+last commit: feat(M9): save/load service — File I/O rubric demo
 ```
 
 ---
@@ -252,5 +249,5 @@ last commit: feat(M8): sequence + item-use puzzles + win condition
 | ArrayLists | M2 | `solvedPuzzleIds`, `heldItemIds`, `connectedRoomIds`, `expectedSequence` |
 | Loops | M8 | `SequencePuzzle.attempt()` — iterates `expectedSequence` to verify submitted order |
 | Conditionals | M5 | Room adjacency check in `GameSessionService.move()` |
-| File I/O | M3 + **M9 (next)** | M3: `WorldSeedService` reads `world.json`; M9: `SaveLoadService` writes/reads JSON snapshots |
+| File I/O | M3 + M9 | M3: `WorldSeedService` reads `world.json`; M9: `SaveLoadService` writes/reads `GameSnapshotDTO` JSON files |
 | GUI | M10–M14 (pending) | `MainFrame`, `ScenePanel`, all `PuzzleDialog` subclasses |
