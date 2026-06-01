@@ -43,7 +43,7 @@ public class MainFrame extends JFrame {
 
         statusBar = new StatusBar();
         scenePanel = new ScenePanel(assetManager);
-        inventoryPanel = new InventoryPanel();
+        inventoryPanel = new InventoryPanel(assetManager);
         dialoguePanel = new DialoguePanel();
 
         setLayout(new BorderLayout());
