@@ -341,13 +341,16 @@ public class ProceduralAssetManager implements AssetManager {
                         (int)(160 + 62 * dx), (int)(95 + 62 * dy));
         }
 
-        // Three hand smears 120° apart — a three-pronged shape no player can read as a time
-        g2.setColor(ThemeConstants.DIM_TEXT);
-        g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        for (int i = 0; i < 3; i++) {
-            double a = (40.0 + i * 120.0) * Math.PI / 180.0;
-            g2.drawLine(160, 95, (int)(160 + 48 * Math.sin(a)), (int)(95 - 48 * Math.cos(a)));
-        }
+        // Clock hands at 11:47
+        // Hour hand: 11h + 47/60 * 30° = 353.5° (almost at 12, slightly left), shorter+thicker
+        g2.setColor(ThemeConstants.CANDLE_TEXT);
+        g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        double aHour = 353.5 * Math.PI / 180.0;
+        g2.drawLine(160, 95, (int)(160 + 40 * Math.sin(aHour)), (int)(95 - 40 * Math.cos(aHour)));
+        // Minute hand: 47 * 6° = 282° (between 9 and 10, pointing left), longer+thinner
+        g2.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        double aMin = 282.0 * Math.PI / 180.0;
+        g2.drawLine(160, 95, (int)(160 + 55 * Math.sin(aMin)), (int)(95 - 55 * Math.cos(aMin)));
         g2.setStroke(new BasicStroke(1f));
 
         // Format label
