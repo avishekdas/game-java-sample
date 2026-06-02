@@ -232,8 +232,7 @@ public class MainFrame extends JFrame {
             }
             if ("PUZZLE".equals(hotspot.getType())) {
                 String oid = hotspot.getObjectId();
-                if (!shownHintCards.contains(oid) && hintCardImages.containsKey(oid)) {
-                    shownHintCards.add(oid);
+                if (hintCardImages.containsKey(oid)) {
                     scenePanel.showHintCard(hintCardImages.get(oid));
                     RoomObjectDTO capturedObj = roomObjectsByHotspotId.get(oid);
                     Timer delay = new Timer(1500, e -> {
