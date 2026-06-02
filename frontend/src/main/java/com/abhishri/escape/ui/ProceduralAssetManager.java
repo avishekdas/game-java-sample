@@ -341,13 +341,13 @@ public class ProceduralAssetManager implements AssetManager {
                         (int)(160 + 62 * dx), (int)(95 + 62 * dy));
         }
 
-        // Two blurred hand smears — equal length, asymmetric angles, no readable time
+        // Three hand smears 120° apart — a three-pronged shape no player can read as a time
         g2.setColor(ThemeConstants.DIM_TEXT);
         g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        double a1 = 105.0 * Math.PI / 180.0;   // ~3:30 clock position
-        g2.drawLine(160, 95, (int)(160 + 50 * Math.sin(a1)), (int)(95 - 50 * Math.cos(a1)));
-        double a2 = 210.0 * Math.PI / 180.0;   // ~7:00 clock position
-        g2.drawLine(160, 95, (int)(160 + 50 * Math.sin(a2)), (int)(95 - 50 * Math.cos(a2)));
+        for (int i = 0; i < 3; i++) {
+            double a = (40.0 + i * 120.0) * Math.PI / 180.0;
+            g2.drawLine(160, 95, (int)(160 + 48 * Math.sin(a)), (int)(95 - 48 * Math.cos(a)));
+        }
         g2.setStroke(new BasicStroke(1f));
 
         // Format label
