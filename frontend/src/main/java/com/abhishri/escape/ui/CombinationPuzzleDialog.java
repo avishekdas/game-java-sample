@@ -18,9 +18,19 @@ public class CombinationPuzzleDialog extends PuzzleDialog {
         spinners = new JSpinner[digitCount];
         JPanel inputPanel = new JPanel(new FlowLayout());
         inputPanel.add(new JLabel(description + ":"));
+
         for (int i = 0; i < digitCount; i++) {
             spinners[i] = new JSpinner(new SpinnerNumberModel(0, 0, 9, 1));
             ((JSpinner.DefaultEditor) spinners[i].getEditor()).getTextField().setColumns(2);
+
+            // Style parchment inputs BEFORE initLayout — applyThemeRecursively skips JSpinner
+            spinners[i].setBackground(ThemeConstants.PARCHMENT);
+            spinners[i].setForeground(ThemeConstants.PARCHMENT_TEXT);
+            ((JSpinner.DefaultEditor) spinners[i].getEditor()).getTextField()
+                    .setBackground(ThemeConstants.PARCHMENT);
+            ((JSpinner.DefaultEditor) spinners[i].getEditor()).getTextField()
+                    .setForeground(ThemeConstants.PARCHMENT_TEXT);
+
             inputPanel.add(spinners[i]);
         }
         initLayout(inputPanel);

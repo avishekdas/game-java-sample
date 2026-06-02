@@ -1,5 +1,6 @@
 package com.abhishri.escape.ui;
 
+import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
@@ -15,6 +16,12 @@ public class RiddlePuzzleDialog extends PuzzleDialog {
         super(owner, puzzleId, "Solve the Riddle");
 
         answerField = new JTextField(25);
+        // Style parchment inputs BEFORE initLayout — applyThemeRecursively skips JTextField
+        answerField.setBackground(ThemeConstants.PARCHMENT);
+        answerField.setForeground(ThemeConstants.PARCHMENT_TEXT);
+        answerField.setCaretColor(ThemeConstants.PARCHMENT_TEXT);
+        answerField.setBorder(BorderFactory.createLineBorder(ThemeConstants.AGED_BRASS, 1));
+
         JPanel inputPanel = new JPanel(new BorderLayout(8, 4));
         inputPanel.add(
                 new JLabel("<html><body style='width:280px'>" + questionText + "</body></html>"),

@@ -7,7 +7,7 @@ import java.io.InputStream;
 
 public class FileAssetManager implements AssetManager {
 
-    private final PlaceholderAssetManager fallback = new PlaceholderAssetManager();
+    private final AssetManager fallback = new ProceduralAssetManager();
 
     @Override
     public Image getBackground(String roomId) {
@@ -19,6 +19,11 @@ public class FileAssetManager implements AssetManager {
     public Image getItemIcon(String assetKey) {
         Image loaded = loadFromClasspath("/art/" + assetKey + ".png");
         return loaded != null ? loaded : fallback.getItemIcon(assetKey);
+    }
+
+    @Override
+    public java.awt.Image getHintCard(String objectId) {
+        return fallback.getHintCard(objectId);
     }
 
     private Image loadFromClasspath(String path) {

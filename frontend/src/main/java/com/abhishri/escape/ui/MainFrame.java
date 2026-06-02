@@ -8,14 +8,19 @@ import com.abhishri.escape.ui.dto.SaveMetadataDTO;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.Timer;
 import java.awt.BorderLayout;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class MainFrame extends JFrame {
@@ -26,6 +31,8 @@ public class MainFrame extends JFrame {
     private final DialoguePanel dialoguePanel;
 
     private final GameApiClient client;
+    private final Map<String, BufferedImage> hintCardImages;
+    private final Set<String> shownHintCards = new HashSet<>();
     private UUID gameId;
     private boolean winShown = false;
     private Map<String, RoomObjectDTO> roomObjectsByHotspotId = new HashMap<>();
@@ -40,7 +47,7 @@ public class MainFrame extends JFrame {
 
         statusBar = new StatusBar();
         scenePanel = new ScenePanel(assetManager);
-        inventoryPanel = new InventoryPanel();
+        inventoryPanel = new InventoryPanel(assetManager);
         dialoguePanel = new DialoguePanel();
 
         setLayout(new BorderLayout());
@@ -48,6 +55,13 @@ public class MainFrame extends JFrame {
         getContentPane().add(scenePanel, BorderLayout.CENTER);
         getContentPane().add(inventoryPanel, BorderLayout.EAST);
         getContentPane().add(dialoguePanel, BorderLayout.SOUTH);
+
+        Map<String, BufferedImage> cards = new HashMap<>();
+        for (String oid : List.of("wall_clock", "reception_desk", "reading_lamp", "filing_cabinets")) {
+            java.awt.Image img = assetManager.getHintCard(oid);
+            if (img instanceof BufferedImage bi) cards.put(oid, bi);
+        }
+        this.hintCardImages = Collections.unmodifiableMap(cards);
 
         if (client != null) {
             statusBar.getNewButton().addActionListener(e -> handleNewGame());
@@ -70,6 +84,10 @@ public class MainFrame extends JFrame {
     }
 
     public void applyState(GameStateDTO state) {
+        Set<String> solvedIds = state.getSolvedPuzzleIds() != null
+                ? new HashSet<>(state.getSolvedPuzzleIds())
+                : Collections.emptySet();
+
         if (state.getCurrentRoom() != null) {
             Map<String, RoomObjectDTO> map = new HashMap<>();
             for (RoomObjectDTO obj : state.getCurrentRoom().getObjects()) {
@@ -78,14 +96,14 @@ public class MainFrame extends JFrame {
             roomObjectsByHotspotId = map;
             statusBar.setRoomName(state.getCurrentRoom().getName());
             scenePanel.setCurrentRoomId(state.getCurrentRoom().getId());
-            scenePanel.setHotspots(buildHotspots(state.getCurrentRoom()));
+            scenePanel.setHotspots(buildHotspots(state.getCurrentRoom(), solvedIds));
         }
         if (state.getInventory() != null) {
             inventoryPanel.setItems(state.getInventory());
         }
-        if (state.getSolvedPuzzleIds() != null) {
+        if (!solvedIds.isEmpty()) {
             int total = state.getTotalPuzzles() > 0 ? state.getTotalPuzzles() : 6;
-            statusBar.setSolvedCount(state.getSolvedPuzzleIds().size(), total);
+            statusBar.setSolvedCount(solvedIds.size(), total);
         }
         if (state.getDialogueMessage() != null && !state.getDialogueMessage().isBlank()) {
             dialoguePanel.append(state.getDialogueMessage());
@@ -104,6 +122,8 @@ public class MainFrame extends JFrame {
 
     protected void showWinDialog(String message) {
         JOptionPane.showMessageDialog(this, message, "You're free!", JOptionPane.INFORMATION_MESSAGE);
+        dispose();
+        System.exit(0);
     }
 
     protected boolean confirmNewGame() {
@@ -125,12 +145,16 @@ public class MainFrame extends JFrame {
     public InventoryPanel getInventoryPanel() { return inventoryPanel; }
     public DialoguePanel getDialoguePanel() { return dialoguePanel; }
 
+    Map<String, BufferedImage> getHintCardImages() { return hintCardImages; }
+    Set<String> getShownHintCards() { return shownHintCards; }
+
     private void handleNewGame() {
         if (!confirmNewGame()) return;
         try {
             GameStateDTO state = client.newGame();
             gameId = state.getGameId();
             winShown = false;
+            shownHintCards.clear();
             statusBar.setSaveEnabled(true);
             dialoguePanel.setText("");
             applyState(state);
@@ -170,6 +194,7 @@ public class MainFrame extends JFrame {
             String selected = selectSaveFile(filenames);
             if (selected == null) return;
             GameStateDTO state = client.loadGame(gameId, selected);
+            shownHintCards.clear();
             applyState(state);
         } catch (RuntimeException e) {
             dialoguePanel.append("Load failed: " + toFriendlyMessage(e));
@@ -208,13 +233,28 @@ public class MainFrame extends JFrame {
                 }
             }
             if ("PUZZLE".equals(hotspot.getType())) {
-                RoomObjectDTO obj = roomObjectsByHotspotId.get(hotspot.getObjectId());
+                String oid = hotspot.getObjectId();
+                if (hintCardImages.containsKey(oid)) {
+                    scenePanel.showHintCard(hintCardImages.get(oid));
+                    RoomObjectDTO capturedObj = roomObjectsByHotspotId.get(oid);
+                    Timer delay = new Timer(1500, e -> {
+                        ((Timer) e.getSource()).stop();
+                        if (capturedObj != null) handlePuzzleClick(capturedObj);
+                    });
+                    delay.setRepeats(false);
+                    delay.start();
+                    return;
+                }
+                RoomObjectDTO obj = roomObjectsByHotspotId.get(oid);
                 if (obj != null && obj.getPuzzleType() != null) {
                     handlePuzzleClick(obj);
                     return;
                 }
             }
             applyState(client.examine(gameId, hotspot.getObjectId()));
+            if (hintCardImages.containsKey(hotspot.getObjectId())) {
+                scenePanel.showHintCard(hintCardImages.get(hotspot.getObjectId()));
+            }
         } catch (RuntimeException e) {
             dialoguePanel.append("Error: " + toFriendlyMessage(e));
         }
@@ -264,7 +304,7 @@ public class MainFrame extends JFrame {
         return msg;
     }
 
-    private List<Hotspot> buildHotspots(RoomDTO room) {
+    private List<Hotspot> buildHotspots(RoomDTO room, Set<String> solvedIds) {
         List<Hotspot> hotspots = new ArrayList<>();
         int panelW = scenePanel.getWidth();
         int panelH = scenePanel.getHeight();
@@ -281,7 +321,9 @@ public class MainFrame extends JFrame {
                 int x = spacing * (i + 1) - 50;
                 Rectangle bounds = new Rectangle(x, baseY - 30, 100, 60);
                 String type = obj.getObjectType() != null ? obj.getObjectType().name() : "SCENERY";
-                hotspots.add(new Hotspot(obj.getId(), type, obj.getLabel(), bounds, obj.getId()));
+                // ⚠ Solved lookup uses obj.getPuzzleId() (e.g. "puzzle_clock"), NOT obj.getId()
+                boolean solved = "PUZZLE".equals(type) && solvedIds.contains(obj.getPuzzleId());
+                hotspots.add(new Hotspot(obj.getId(), type, obj.getLabel(), bounds, obj.getId(), solved));
             }
         }
 
