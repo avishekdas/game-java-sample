@@ -4,15 +4,15 @@ Single-player point-and-click escape room game. Java 17 + Spring Boot 3 backend,
 
 ## Status
 
-Phase 1 (MVP) — **complete**. Phase 2 (UI upgrade, branch `ui-improvement`) — **complete**.
-150 tests pass (86 backend + 64 frontend). Zero backend changes in the UI upgrade.
+Phase 1 (MVP) — **complete**. Phase 2 (UI upgrade + visual hint system) — **complete**. Merged to `main`.
+165 tests pass (83 backend + 82 frontend). Zero backend changes across both phases.
 
 ## Documentation
 
 - **[`idea.md`](./idea.md)** — vision, scope, theme, AP CS rubric mapping, resolved architectural decisions, MVP build order.
 - **[`design.md`](./design.md)** — implementation-ready blueprint: DDL, DTOs, REST API reference, sequence diagrams, config files, acceptance criteria.
-- **[`design_ui_upgrade.md`](./design_ui_upgrade.md)** — UI upgrade design: color palette, typography, component specs, procedural art algorithm.
-- **[`plan_ui_upgrade.md`](./plan_ui_upgrade.md)** — UI upgrade TDD milestone plan (UI-M1 through UI-M5).
+- **[`design_ui_upgrade.md`](./design_ui_upgrade.md)** — UI upgrade design: color palette, typography, component specs, procedural art algorithm, visual hint system (§10).
+- **[`plan_ui_upgrade.md`](./plan_ui_upgrade.md)** — UI upgrade TDD milestone plan (UI-M1 through UI-M7).
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
   mvn --offline clean test
 ```
 
-Expected: `BUILD SUCCESS`, 150 tests, 0 failures.
+Expected: `BUILD SUCCESS`, 165 tests, 0 failures.
 
 ### Step 2 — Start the backend (Terminal 1)
 
@@ -65,7 +65,7 @@ The Swing window opens. Click **New Game** in the top toolbar to begin.
 
 ### Step 4 — Stop
 
-Press `Ctrl+C` in Terminal 1 to stop the backend. Closing the Swing window stops the frontend.
+Winning the game closes the frontend window automatically. Press `Ctrl+C` in Terminal 1 to stop the backend. To quit mid-game, close the Swing window normally.
 
 ## What to Verify (UI Upgrade Checklist)
 
@@ -101,6 +101,18 @@ After clicking New Game, walk through these checks before playing the full golde
 
 **Solved state**
 - [ ] After solving the Wall Clock, navigate away and back — that hotspot shows `Wall Clock ✓` with a green-tint overlay
+
+**Hint cards**
+- [ ] Clicking **Wall Clock** shows a clock face card (hands at 11:47, "HH:MM" label) for ~1.5s before the riddle dialog opens
+- [ ] Examining **Reception Desk** shows a card with 3 brass nail circles on a doorframe arch
+- [ ] Examining **Reading Lamp** shows a card with 8 book-spine rectangles side by side
+- [ ] Examining **Filing Cabinets** shows a card with 4 cabinet faces and drawer handles
+- [ ] All hint cards fade out automatically after ~2 seconds
+
+**Counting clues in room art**
+- [ ] Entry Foyer: 3 small brass dots visible near the arched doorframe (count = first combination digit)
+- [ ] Reading Hall: exactly 8 bookshelf silhouettes across the background (count = second combination digit)
+- [ ] The Archives: 4 filing cabinet silhouettes (count = third combination digit)
 
 ## Project Layout
 
@@ -254,7 +266,7 @@ Select `Manuscript Page` in the inventory panel, then click the **Pneumatic-Tube
 
 > *"The tube hisses. Evidence received. The front door's electromagnetic lock disengages. You are free."*
 
-The game ends with a win dialog. All six puzzles must be solved before this step succeeds.
+The game ends with a win dialog. Click OK and the application exits automatically. All six puzzles must be solved before this step succeeds.
 
 ---
 

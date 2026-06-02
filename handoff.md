@@ -121,18 +121,18 @@ mvn -pl frontend exec:java -Dexec.mainClass=com.abhishri.escape.ui.EscapeRoomApp
 | UI-M2 — Hotspot + MainFrame plumbing | ✅ DONE | `Hotspot.solved` field; null-safe `solvedIds` set; `buildHotspots(solvedIds)` |
 | UI-M3 — ScenePanel visual rework | ✅ DONE | Styled hotspots; hover (hand cursor + glow); room crossfade; `FileAssetManager` → `ProceduralAssetManager` fallback |
 | UI-M4 — Panels | ✅ DONE | Dark theme: `StatusBar` (dots), `DialoguePanel` (parchment), `InventoryPanel` (icons + use-mode) |
-| UI-M5 — Puzzle Dialogs + Final Gate | ✅ DONE | All dialogs dark/parchment styled; all 150 tests green; `design_ui_upgrade.md §9` complete |
+| UI-M5 — Puzzle Dialogs + Final Gate | ✅ DONE | All dialogs dark/parchment styled; `design_ui_upgrade.md §9` acceptance gate complete |
 
-**Test count after Phase 2:** 86 backend + 64 frontend = **150 tests**, all green.
-
-### Phase 2 — Visual Hint System (UI-M6–UI-M7)  ⏳ Designed, ready to build
+### Phase 2 — Visual Hint System (UI-M6–UI-M7)  ✅ Complete
 
 | Milestone | Status | Key outputs |
 |-----------|--------|-------------|
-| UI-M6 — Room Art Counting Clues | ⏳ NEXT | 8 bookshelves in Reading Hall (up from 5); 3 brass nail circles in Foyer doorframe |
-| UI-M7 — Examination Hint Cards | ⏳ PLANNED | `getHintCard()` on `AssetManager`; 4 procedural cards; `ScenePanel` overlay; `MainFrame` triggers |
+| UI-M6 — Room Art Counting Clues | ✅ DONE | 8 bookshelves in Reading Hall (up from 5); 3 AGED_BRASS nail circles in Foyer doorframe |
+| UI-M7 — Examination Hint Cards | ✅ DONE | `getHintCard()` default on `AssetManager`; 4 procedural 320×200 cards; `ScenePanel` overlay with hold+fade timer; `MainFrame` trigger logic (PUZZLE delay + SCENERY examine) |
 
-Design: `design_ui_upgrade.md §10`. Plan: `plan_ui_upgrade.md §6 UI-M6 / UI-M7`.
+**Additional polish:** auto-exit on win (`dispose()` + `System.exit(0)` in `showWinDialog`); wall clock card shows every click (not once-per-session); clock hands render actual answer time 11:47.
+
+**Test count — all phases complete:** 83 backend + 82 frontend = **165 tests**, all green. Branch `ui-improvement` merged to `main`.
 
 ---
 
@@ -196,24 +196,17 @@ frontend/src/main/java/com/abhishri/escape/ui/
 
 ---
 
-## 7. Where to Pick Up Next
+## 7. Project Status
 
-**Current branch:** `ui-improvement`
+**All milestones complete. Branch `ui-improvement` merged to `main`.**
 
-**Immediate next task:** UI-M6 — Room Art Counting Clues (Option A of visual hint system)
+165 tests pass (`mvn --offline clean test` from repo root). Zero backend changes across Phase 2.
 
-Pre-conditions: all 150 tests pass (`mvn --offline clean test`).
-
-**What UI-M6 involves** (see `plan_ui_upgrade.md §6 UI-M6` for full Red/Green/Acceptance):
-1. Write `ProceduralAssetManagerCountingCluesTest.java` (4 assertions — all Red today)
-2. Change reading hall silhouette loop from 5 to 8 bookshelves in `ProceduralAssetManager`
-3. Add 3 brass nail `fillOval` calls in the foyer silhouette block
-4. Run tests — all pass
-5. Manual check: count 8 shelves in Reading Hall, 3 nail dots near Foyer doorframe
-
-**After UI-M6:** UI-M7 (Hint Cards) — see `plan_ui_upgrade.md §6 UI-M7`.
-
-**After UI-M7:** merge `ui-improvement` → `main`.
+The project is ready for AP CS submission. To play the finished game:
+1. Start the backend (`mvn -pl backend spring-boot:run`)
+2. Start the frontend (`mvn -pl frontend exec:java -Dexec.mainClass=com.abhishri.escape.ui.EscapeRoomApp`)
+3. Click **New Game** and play through all six puzzles
+4. On win, click OK — the application exits automatically
 
 ---
 
@@ -240,19 +233,25 @@ Pre-conditions: all 150 tests pass (`mvn --offline clean test`).
 | 17 | **Solved lookup uses `obj.getPuzzleId()` not `obj.getId()`** | `solvedIds` contains puzzle IDs (e.g. `"puzzle_clock"`); hotspot object ID is `"wall_clock"`. Using `getId()` for the solved check silently never matches |
 | 18 | **`applyThemeRecursively` ordering** — applying theme AFTER `initLayout()` overwrites subclass parchment colors | Subclasses style `JTextField`/`JSpinner`/`JList` BEFORE calling `initLayout()`; the recursive helper skips those types |
 | 19 | **`currentRoomId` initialized to `null`, not `"foyer"`** — first room set must not trigger crossfade | `setCurrentRoomId` uses `Objects.equals` + `previousId != null` guard; test `ScenePanelFadeGuardTest` pins this |
-| 20 | **Reading Hall has 5 bookshelf silhouettes in current art** — the combination digit is 8 | UI-M6 changes the drawing loop from 5 to 8; pixel test at (696, 200) verifies the 8th shelf is present |
+| 20 | **Reading Hall had 5 bookshelf silhouettes** — the combination digit is 8 | UI-M6 changed the loop from 5 to 8 (`shelfW=72, gap=24`); pixel test at **(750, 200)** verifies shelf 8 (old plan used 696,200 which was inside old shelf 5 — vacuously true) |
+| 21 | **Foyer nail pixel tests: "NOT NIGHT_BLACK" is vacuously true** — the nail coordinates sit inside the arch PIE fill (silhouette color, not gradient) | Use `assertEquals(AGED_BRASS.getRGB(), ...)` instead of `assertNotEquals(NIGHT_BLACK, ...)` for nail pixel assertions |
+| 22 | **Two clock hands at any angle read as a specific time** — "10:15", "3:35" etc. | Use three hands (120° apart) to make it unreadable, OR draw actual answer time (11:47: hour at 353.5°, minute at 282°) |
+| 23 | **Visual rendering claims need visual verification** — pixel math alone is insufficient | Write a temp test that saves `getHintCard()` to `/tmp/*.png`, run it, read the PNG with the image viewer, then delete the test before committing |
 
 ---
 
 ## 9. Git State
 
 ```
-branch:      ui-improvement
-last commit: fix: word-wrap hotspot labels that exceed bounds width
-remote:      git@github.com:avishekdas/game-java-sample.git (main branch on remote)
+branch:      main
+last commit: merge: ui-improvement → main — Phase 2 visual overhaul + hint system
+remote:      git@github.com:avishekdas/game-java-sample.git
 ```
 
-After UI-M7 completes: `git checkout main && git merge ui-improvement`.
+All work is on `main`. The `ui-improvement` branch has been merged and can be deleted if desired:
+```bash
+git branch -d ui-improvement
+```
 
 ---
 
@@ -266,4 +265,4 @@ After UI-M7 completes: `git checkout main && git merge ui-improvement`.
 | Loops | `SequencePuzzle.attempt()` iterates `expectedSequence` | `PuzzleDotsPanel.paintComponent()` loop over total dots; `ProceduralAssetManager` loops over items and rooms |
 | Conditionals | Room adjacency check in `GameSessionService.move()` | Solved/hover state branching in `ScenePanel.paintComponent()`; puzzle type dispatch in `MainFrame.createPuzzleDialog()` |
 | File I/O | `WorldSeedService` reads `world.json`; `SaveLoadService` writes/reads JSON save files | `FileAssetManager.getBackground()` reads PNG via `ImageIO.read()` from classpath |
-| GUI | `MainFrame` (BorderLayout, 4 panels), `ScenePanel` (`paintComponent`, `MouseListener`), `StatusBar` (3 JButtons), `AssetManager` interface | `Graphics2D` with `RadialGradientPaint`, `AlphaComposite`, `RoundRectangle2D`; `javax.swing.Timer` for crossfade; `BasicScrollBarUI` subclass; custom `ListCellRenderer` |
+| GUI | `MainFrame` (BorderLayout, 4 panels), `ScenePanel` (`paintComponent`, `MouseListener`), `StatusBar` (3 JButtons), `AssetManager` interface | `Graphics2D` with `RadialGradientPaint`, `AlphaComposite`, `RoundRectangle2D`; `javax.swing.Timer` for crossfade + hint card; `BasicScrollBarUI` subclass; custom `ListCellRenderer`; 4 procedural hint card images |
