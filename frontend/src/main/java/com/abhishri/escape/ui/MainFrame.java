@@ -122,6 +122,8 @@ public class MainFrame extends JFrame {
 
     protected void showWinDialog(String message) {
         JOptionPane.showMessageDialog(this, message, "You're free!", JOptionPane.INFORMATION_MESSAGE);
+        dispose();
+        System.exit(0);
     }
 
     protected boolean confirmNewGame() {
