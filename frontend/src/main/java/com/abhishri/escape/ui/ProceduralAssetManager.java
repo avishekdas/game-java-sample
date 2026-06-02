@@ -341,13 +341,13 @@ public class ProceduralAssetManager implements AssetManager {
                         (int)(160 + 62 * dx), (int)(95 + 62 * dy));
         }
 
-        // Two blurred hand smears at arbitrary angles (deliberately unreadable)
+        // Two blurred hand smears — equal length, asymmetric angles, no readable time
         g2.setColor(ThemeConstants.DIM_TEXT);
         g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        double a1 = 315.0 * Math.PI / 180.0;
-        g2.drawLine(160, 95, (int)(160 + 40 * Math.sin(a1)), (int)(95 - 40 * Math.cos(a1)));
-        double a2 = 90.0 * Math.PI / 180.0;
-        g2.drawLine(160, 95, (int)(160 + 55 * Math.sin(a2)), (int)(95 - 55 * Math.cos(a2)));
+        double a1 = 105.0 * Math.PI / 180.0;   // ~3:30 clock position
+        g2.drawLine(160, 95, (int)(160 + 50 * Math.sin(a1)), (int)(95 - 50 * Math.cos(a1)));
+        double a2 = 210.0 * Math.PI / 180.0;   // ~7:00 clock position
+        g2.drawLine(160, 95, (int)(160 + 50 * Math.sin(a2)), (int)(95 - 50 * Math.cos(a2)));
         g2.setStroke(new BasicStroke(1f));
 
         // Format label
