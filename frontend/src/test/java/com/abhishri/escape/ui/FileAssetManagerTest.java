@@ -26,6 +26,6 @@ class FileAssetManagerTest {
     @Test
     void fileAssetManager_isAnAssetManager() {
         assertInstanceOf(AssetManager.class, new FileAssetManager(),
-                "FileAssetManager must implement AssetManager (Inheritance rubric)");
+                "FileAssetManager must implement AssetManager");
     }
 }

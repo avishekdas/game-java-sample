@@ -49,11 +49,11 @@ public class PuzzleEvaluationService {
         Puzzle puzzle = puzzleRepository.findById(req.getPuzzleId())
                 .orElseThrow(() -> new PuzzleNotFoundException(req.getPuzzleId()));
 
-        // Inheritance rubric: polymorphic dispatch to the correct attempt() implementation
         if (!session.getSolvedPuzzleIds().containsAll(puzzle.getPrerequisitePuzzleIds())) {
             throw new PrerequisiteNotMetException(req.getPuzzleId());
         }
 
+        // Dispatch to the puzzle subclass's attempt() implementation
         boolean solved = puzzle.attempt(req.getInputs());
 
         if (solved) {

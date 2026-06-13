@@ -13,7 +13,7 @@ import java.awt.RenderingHints;
 
 public class StatusBar extends JPanel {
 
-    // Loops + Conditionals rubric demo: custom paintComponent with branching dot logic
+    // Custom paintComponent with branching dot logic
     static class PuzzleDotsPanel extends JPanel {
 
         private static final int DOT_SIZE    = 10;

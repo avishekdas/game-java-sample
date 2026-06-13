@@ -87,7 +87,7 @@ public class GameSessionService {
         Room currentRoom = roomRepository.findById(session.getCurrentRoomId())
                 .orElseThrow(() -> new IllegalStateException("Room not found: " + session.getCurrentRoomId()));
 
-        // Conditionals rubric: adjacency check is the guard
+        // Adjacency check is the guard for valid moves
         if (!currentRoom.isConnectedTo(req.getTargetRoomId())) {
             throw new InvalidMoveException("Cannot move to " + req.getTargetRoomId() + " from here.");
         }
@@ -154,7 +154,7 @@ public class GameSessionService {
     }
 
     public GameStateDTO buildStateDTO(GameSession session, String message, LastActionResult result) {
-        // Win condition: Conditionals rubric — flip status to COMPLETE when all puzzles solved
+        // Win condition: flip status to COMPLETE when all puzzles solved
         List<String> allPuzzleIds = puzzleRepository.findAll().stream()
                 .map(Puzzle::getId)
                 .toList();

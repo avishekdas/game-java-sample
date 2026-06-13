@@ -36,7 +36,7 @@ class GameFlowIntegrationTest {
         attemptPuzzle(gameId, "test_combo_puzzle", "{\"code\":\"123\"}");
         // 3. Solve prereq riddle (prereq: test_puzzle now satisfied)
         attemptPuzzle(gameId, "test_prereq_puzzle", "{\"answer\":\"maybe\"}");
-        // 4. Solve sequence puzzle (Loops rubric: iterates expectedSequence)
+        // 4. Solve sequence puzzle (iterates expectedSequence)
         attemptPuzzle(gameId, "test_seq_puzzle", "{\"sequence\":\"a,b,c\"}");
         // 5. Use test_combo_reward on some_target — solves test_item_use_puzzle (5th and final)
         MvcResult last = mockMvc.perform(post("/api/game/{gameId}/use-item", gameId)
