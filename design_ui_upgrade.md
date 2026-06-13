@@ -432,7 +432,7 @@ This is significantly better than the current solid-color oval. It is also a cle
 ## 8. Out of Scope (defer to later)
 
 - Sound / ambient audio (was in Phase 2 backlog — keep there; no `javax.sound.sampled` code this sprint)
-- `SwingWorker` async HTTP calls (stays Phase 2 per `idea.md §11` and CLAUDE.md)
+- `SwingWorker` async HTTP calls (stays Phase 2 per `idea.md §11`)
 - Drag-and-drop sequence dialog upgrade (stays Phase 2)
 - Win screen animation beyond existing `JOptionPane`
 - Any new gameplay mechanics or puzzle changes
